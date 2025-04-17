@@ -4,6 +4,7 @@ export const messages = {
       mobileRequired: 'Mobile number is required',
       otpRequired: 'Mobile number and OTP are required',
       invalidOtp: 'Invalid OTP',
+      otpExpired: 'OTP has expired',
     },
     success: {
       otpSent: 'OTP sent successfully',
@@ -19,6 +20,7 @@ export const messages = {
       mobileRequired: 'मोबाइल नंबर आवश्यक है',
       otpRequired: 'मोबाइल नंबर और ओटीपी आवश्यक हैं',
       invalidOtp: 'अमान्य ओटीपी',
+      otpExpired: 'ओटीपी की समय सीमा समाप्त हो गई है',
     },
     success: {
       otpSent: 'ओटीपी सफलतापूर्वक भेजा गया',

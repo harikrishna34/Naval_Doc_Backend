@@ -7,6 +7,7 @@ import {
   verifyOtpValidation,
   resendOtpValidation,
 } from '../validations/joiValidations';
+import sequelize from '../config/database'; // Import sequelize for transaction management
 import { responseHandler } from '../common/responseHandler';
 import { statusCodes } from '../common/statusCodes';
 import logger from '../common/logger';
@@ -23,16 +24,20 @@ export const loginWithMobile = async (req: Request, res: Response) => {
       .json({ message: getMessage('validation.mobileRequired') });
   }
 
+  const transaction = await sequelize.transaction(); // Start a transaction
+
   try {
-    let user = await User.findOne({ where: { mobile } });
+    let user = await User.findOne({ where: { mobile }, transaction });
     if (!user) {
-      user = await User.create({ mobile });
+      user = await User.create({ mobile }, { transaction });
     }
 
     const otp = generateOtp(); // Generate OTP
     const expiresAt = getExpiryTimeInKolkata(60); // Set expiry time to 60 seconds from now
 
-    await Otp.create({ mobile, otp, expiresAt }); // Save OTP with expiry time in the database
+    await Otp.create({ mobile, otp, expiresAt }, { transaction }); // Save OTP with expiry time in the database
+
+    await transaction.commit(); // Commit the transaction
 
     logger.info(`OTP generated for mobile ${mobile}: ${otp}`); // Log OTP generation
 
@@ -40,11 +45,14 @@ export const loginWithMobile = async (req: Request, res: Response) => {
       .status(statusCodes.SUCCESS)
       .json({ message: getMessage('success.otpSent') });
   } catch (error: unknown) {
+    await transaction.rollback(); // Rollback the transaction in case of an error
+
     if (error instanceof Error) {
       logger.error(`Error in loginWithMobile: ${error.message}`);
     } else {
       logger.error(`Unknown error in loginWithMobile: ${error}`);
     }
+
     res
       .status(statusCodes.INTERNAL_SERVER_ERROR)
       .json({ message: getMessage('error.internalServerError') });
@@ -63,11 +71,14 @@ export const verifyOtp = async (req: Request, res: Response) => {
       .json({ message: error.details[0].message });
   }
 
+  const transaction = await sequelize.transaction(); // Start a transaction
+
   try {
-    const otpRecord = await Otp.findOne({ where: { mobile, otp } });
+    const otpRecord = await Otp.findOne({ where: { mobile, otp }, transaction });
 
     if (!otpRecord) {
       logger.warn(`Invalid OTP for mobile ${mobile}`);
+      await transaction.rollback(); // Rollback the transaction
       return res
         .status(statusCodes.BAD_REQUEST)
         .json({ message: responseHandler.validation.invalidOtp.message });
@@ -77,28 +88,34 @@ export const verifyOtp = async (req: Request, res: Response) => {
     const currentTime = Math.floor(Date.now() / 1000); // Current time in Unix timestamp
     if (currentTime > otpRecord.expiresAt) {
       logger.warn(`Expired OTP for mobile ${mobile}`);
-      await otpRecord.destroy(); // Delete the expired OTP
+      await otpRecord.destroy({ transaction }); // Delete the expired OTP
+      await transaction.rollback(); // Rollback the transaction
       return res
         .status(statusCodes.BAD_REQUEST)
-        .json({ message: 'OTP has expired. Please request a new one.' });
+        .json({ message: getMessage('validation.otpExpired') });
     }
 
     // OTP is valid, delete the OTP record
-    await otpRecord.destroy();
+    await otpRecord.destroy({ transaction });
 
     // Generate a JWT token using the utility function
     const token = generateToken({ mobile });
+
+    await transaction.commit(); // Commit the transaction
 
     logger.info(`OTP verified for mobile ${mobile}`);
     res
       .status(statusCodes.SUCCESS)
       .json({ message: responseHandler.success.otpVerified.message, token });
   } catch (error: unknown) {
+    await transaction.rollback(); // Rollback the transaction in case of an error
+
     if (error instanceof Error) {
       logger.error(`Error in verifyOtp: ${error.message}`);
     } else {
       logger.error(`Unknown error in verifyOtp: ${error}`);
     }
+
     res
       .status(statusCodes.INTERNAL_SERVER_ERROR)
       .json({ message: responseHandler.error.internalServerError.message });

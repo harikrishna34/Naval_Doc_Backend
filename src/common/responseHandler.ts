@@ -10,7 +10,9 @@ const language = (process.env.LANGUAGE || 'EN') as keyof typeof messages; // Def
 export const responseHandler = {
   validation: {
     mobileRequired: { status: statusCodes.BAD_REQUEST, message: messages[language].validation.mobileRequired },
-    otpRequired: { status: statusCodes.BAD_REQUEST, message: messages[language].validation.otpRequired },
+    otpRequired: 'otpRequired' in messages[language].validation
+      ? { status: statusCodes.BAD_REQUEST, message: messages[language].validation.otpRequired }
+      : { status: statusCodes.BAD_REQUEST, message: 'otpRequired message not defined' },
     invalidOtp: { status: statusCodes.BAD_REQUEST, message: messages[language].validation.invalidOtp },
   },
   success: {
