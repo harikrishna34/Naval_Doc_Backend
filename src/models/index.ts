@@ -12,8 +12,21 @@ User.init(
     email: { type: DataTypes.STRING, allowNull: true, unique: true },
     profile: { type: DataTypes.STRING, allowNull: true },
     gender: { type: DataTypes.STRING, allowNull: true },
+    status: { type: DataTypes.STRING, allowNull: false, defaultValue: 'active' }, // Added status key
+    createdById: { type: DataTypes.INTEGER, allowNull: true }, // Added createdById
+    updatedById: { type: DataTypes.INTEGER, allowNull: true }, // Added updatedById
+    createdAt: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: () => Math.floor(Date.now() / 1000), // Default to current Unix timestamp
+    },
+    updatedAt: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: () => Math.floor(Date.now() / 1000), // Default to current Unix timestamp
+    },
   },
-  { sequelize, modelName: 'User', tableName: 'users' }
+  { sequelize, modelName: 'User', tableName: 'users', timestamps: true }
 );
 
 Otp.init(
@@ -21,8 +34,21 @@ Otp.init(
     mobile: { type: DataTypes.STRING, allowNull: false },
     otp: { type: DataTypes.STRING, allowNull: false },
     expiresAt: { type: DataTypes.INTEGER, allowNull: false },
+    status: { type: DataTypes.STRING, allowNull: false, defaultValue: 'active' }, // Added status key
+    createdById: { type: DataTypes.INTEGER, allowNull: true }, // Added createdById
+    updatedById: { type: DataTypes.INTEGER, allowNull: true }, // Added updatedById
+    createdAt: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: () => Math.floor(Date.now() / 1000), // Default to current Unix timestamp
+    },
+    updatedAt: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: () => Math.floor(Date.now() / 1000), // Default to current Unix timestamp
+    },
   },
-  { sequelize, modelName: 'Otp', tableName: 'otps' }
+  { sequelize, modelName: 'Otp', tableName: 'otps', timestamps: true }
 );
 
 // Export models and Sequelize instance

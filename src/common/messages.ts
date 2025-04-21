@@ -10,9 +10,12 @@ export const messages = {
       otpSent: 'OTP sent successfully',
       otpVerified: 'OTP verified successfully',
       otpResent: 'OTP resent successfully',
+      roleCreated: 'Role created successfully',
+      rolesFetched: 'Roles fetched successfully',
     },
     error: {
       internalServerError: 'Internal server error',
+      validationError: 'Validation error occurred',
     },
   },
   HI: {
@@ -26,9 +29,12 @@ export const messages = {
       otpSent: 'ओटीपी सफलतापूर्वक भेजा गया',
       otpVerified: 'ओटीपी सफलतापूर्वक सत्यापित किया गया',
       otpResent: 'ओटीपी फिर से भेजा गया',
+      roleCreated: 'भूमिका सफलतापूर्वक बनाई गई',
+      rolesFetched: 'भूमिकाएँ सफलतापूर्वक प्राप्त की गईं',
     },
     error: {
       internalServerError: 'आंतरिक सर्वर त्रुटि',
+      validationError: 'मान्यकरण त्रुटि हुई',
     },
   },
 };

@@ -16,36 +16,45 @@ module.exports = {
         type: Sequelize.STRING,
         allowNull: true,
       },
-      mobile: {
+      email: {
         type: Sequelize.STRING,
         allowNull: false,
         unique: true,
       },
-      email: {
+      mobile: {
         type: Sequelize.STRING,
-        allowNull: true,
+        allowNull: false,
         unique: true,
       },
       profile: {
         type: Sequelize.STRING,
         allowNull: true,
       },
-      gender: {
+      status: {
         type: Sequelize.STRING,
+        allowNull: false,
+        defaultValue: 'active',
+      },
+      createdById: {
+        type: Sequelize.INTEGER,
+        allowNull: true,
+      },
+      updatedById: {
+        type: Sequelize.INTEGER,
         allowNull: true,
       },
       createdAt: {
-        type: Sequelize.DATE,
+        type: Sequelize.INTEGER,
         allowNull: false,
       },
       updatedAt: {
-        type: Sequelize.DATE,
+        type: Sequelize.INTEGER,
         allowNull: false,
       },
     });
   },
 
-  down: async (queryInterface, Sequelize) => {
+  down: async (queryInterface) => {
     await queryInterface.dropTable('users');
   },
 };

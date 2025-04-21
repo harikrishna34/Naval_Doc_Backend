@@ -1,6 +1,8 @@
 import { Request, Response } from 'express';
 import User from '../models/user';
 import Otp from '../models/otp';
+import Role from '../models/role'; // Import the Role model
+import UserRole from '../models/userRole'; // Import the UserRole model
 import { generateOtp, generateToken, getExpiryTimeInKolkata, getMessage } from '../common/utils';
 import {
   loginWithMobileValidation,
@@ -15,8 +17,8 @@ import logger from '../common/logger';
 export const loginWithMobile = async (req: Request, res: Response) => {
   const { mobile } = req.body;
 
+  // Validate the request body
   const { error } = loginWithMobileValidation.validate({ mobile });
-
   if (error) {
     logger.error(`Validation error: ${error.details[0].message}`);
     return res
@@ -27,20 +29,33 @@ export const loginWithMobile = async (req: Request, res: Response) => {
   const transaction = await sequelize.transaction(); // Start a transaction
 
   try {
+    // Check if the user exists
     let user = await User.findOne({ where: { mobile }, transaction });
     if (!user) {
+      // Create a new user if not found
       user = await User.create({ mobile }, { transaction });
+      logger.info(`New user created with mobile: ${mobile}`);
+
+      // Assign the default "User" role to the new user
+      const userRole = await Role.findOne({ where: { name: 'User' }, transaction });
+      if (userRole) {
+        await UserRole.create({ userId: user.id, roleId: userRole.id }, { transaction });
+        logger.info(`Default role "User" assigned to user with mobile: ${mobile}`);
+      } else {
+        logger.warn('Default role "User" not found in the database');
+      }
     }
 
-    const otp = generateOtp(); // Generate OTP
-    const expiresAt = getExpiryTimeInKolkata(60); // Set expiry time to 60 seconds from now
+    // Generate OTP and expiry time
+    const otp = generateOtp();
+    const expiresAt = getExpiryTimeInKolkata(60); // OTP expires in 60 seconds
 
-    await Otp.create({ mobile, otp, expiresAt }, { transaction }); // Save OTP with expiry time in the database
+    // Save OTP to the database
+    await Otp.create({ mobile, otp, expiresAt }, { transaction });
 
     await transaction.commit(); // Commit the transaction
 
-    logger.info(`OTP generated for mobile ${mobile}: ${otp}`); // Log OTP generation
-
+    logger.info(`OTP generated for mobile ${mobile}: ${otp}`);
     res
       .status(statusCodes.SUCCESS)
       .json({ message: getMessage('success.otpSent') });

@@ -9,18 +9,53 @@ const language = (process.env.LANGUAGE || 'EN') as keyof typeof messages; // Def
 
 export const responseHandler = {
   validation: {
-    mobileRequired: { status: statusCodes.BAD_REQUEST, message: messages[language].validation.mobileRequired },
-    otpRequired: 'otpRequired' in messages[language].validation
-      ? { status: statusCodes.BAD_REQUEST, message: messages[language].validation.otpRequired }
-      : { status: statusCodes.BAD_REQUEST, message: 'otpRequired message not defined' },
-    invalidOtp: { status: statusCodes.BAD_REQUEST, message: messages[language].validation.invalidOtp },
+    mobileRequired: {
+      status: statusCodes.BAD_REQUEST,
+      message: messages[language].validation.mobileRequired,
+    },
+    otpRequired: {
+      status: statusCodes.BAD_REQUEST,
+      message: messages[language].validation.otpRequired,
+    },
+    invalidOtp: {
+      status: statusCodes.BAD_REQUEST,
+      message: messages[language].validation.invalidOtp,
+    },
+    otpExpired: {
+      status: statusCodes.BAD_REQUEST,
+      message: messages[language].validation.otpExpired,
+    },
   },
   success: {
-    otpSent: { status: statusCodes.SUCCESS, message: messages[language].success.otpSent },
-    otpVerified: { status: statusCodes.SUCCESS, message: messages[language].success.otpVerified },
-    otpResent: { status: statusCodes.SUCCESS, message: messages[language].success.otpResent },
+    otpSent: {
+      status: statusCodes.SUCCESS,
+      message: messages[language].success.otpSent,
+    },
+    otpVerified: {
+      status: statusCodes.SUCCESS,
+      message: messages[language].success.otpVerified,
+    },
+    otpResent: {
+      status: statusCodes.SUCCESS,
+      message: messages[language].success.otpResent,
+    },
+    roleCreated: {
+      status: statusCodes.SUCCESS,
+      message: messages[language].success.roleCreated || 'Role created successfully',
+    },
+    rolesFetched: {
+      status: statusCodes.SUCCESS,
+      message: messages[language].success.rolesFetched || 'Roles fetched successfully',
+    },
   },
   error: {
-    internalServerError: { status: statusCodes.INTERNAL_SERVER_ERROR, message: messages[language].error.internalServerError },
+    internalServerError: {
+      status: statusCodes.INTERNAL_SERVER_ERROR,
+      message: messages[language].error.internalServerError,
+    },
+    validationError: {
+      status: statusCodes.BAD_REQUEST,
+      message: messages[language].error.validationError || 'Validation error occurred',
+    },
   },
 };

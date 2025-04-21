@@ -1,26 +1,144 @@
 import { DataTypes, Model } from 'sequelize';
 import sequelize from '../config/database';
 
+class Role extends Model {
+  public id!: number;
+  public name!: string;
+  public status!: string; // Status of the role (e.g., 'active', 'inactive')
+  public createdAt!: number; // Unix timestamp
+  public updatedAt!: number; // Unix timestamp
+}
+
+Role.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    name: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      unique: true,
+    },
+    status: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: 'active', // Default status is 'active'
+    },
+    createdAt: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: () => Math.floor(Date.now() / 1000), // Default to current Unix timestamp
+    },
+    updatedAt: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: () => Math.floor(Date.now() / 1000), // Default to current Unix timestamp
+    },
+  },
+  {
+    sequelize,
+    modelName: 'Role',
+    tableName: 'roles',
+    timestamps: true,
+    hooks: {
+      beforeCreate: (role) => {
+        const now = Math.floor(Date.now() / 1000);
+        role.createdAt = now;
+        role.updatedAt = now;
+      },
+      beforeUpdate: (role) => {
+        role.updatedAt = Math.floor(Date.now() / 1000);
+      },
+    },
+  }
+);
+
 class User extends Model {
   public id!: number;
-  public firstName!: string;
-  public lastName!: string;
-  public mobile!: string;
+  public firstName!: string | null;
+  public lastName!: string | null;
   public email!: string;
+  public mobile!: string;
   public profile!: string | null;
-  public gender!: string | null;
+  public status!: string; // Status of the user (e.g., 'active', 'inactive')
+  public createdById!: number | null; // ID of the user who created the record
+  public updatedById!: number | null; // ID of the user who last updated the record
+  public createdAt!: number; // Unix timestamp
+  public updatedAt!: number; // Unix timestamp
 }
 
 User.init(
   {
-    firstName: { type: DataTypes.STRING, allowNull: true },
-    lastName: { type: DataTypes.STRING, allowNull: true },
-    mobile: { type: DataTypes.STRING, allowNull: false, unique: true },
-    email: { type: DataTypes.STRING, allowNull: true, unique: true },
-    profile: { type: DataTypes.STRING, allowNull: true },
-    gender: { type: DataTypes.STRING, allowNull: true },
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    firstName: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    lastName: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    email: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      unique: true,
+    },
+    mobile: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      unique: true,
+    },
+    profile: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    status: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: 'active', // Default status is 'active'
+    },
+    createdById: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    updatedById: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    createdAt: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: () => Math.floor(Date.now() / 1000), // Default to current Unix timestamp
+    },
+    updatedAt: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: () => Math.floor(Date.now() / 1000), // Default to current Unix timestamp
+    },
   },
-  { sequelize, modelName: 'User', tableName: 'users' }
+  {
+    sequelize,
+    modelName: 'User',
+    tableName: 'users',
+    timestamps: true,
+    hooks: {
+      beforeCreate: (user) => {
+        const now = Math.floor(Date.now() / 1000);
+        user.createdAt = now;
+        user.updatedAt = now;
+      },
+      beforeUpdate: (user) => {
+        user.updatedAt = Math.floor(Date.now() / 1000);
+      },
+    },
+  }
 );
 
+export { Role };
 export default User;
