@@ -1,6 +1,8 @@
 import express from 'express';
 import authRoutes from './routes/authRoutes';
 import canteenRoutes from './routes/canteenRoutes';
+import userRoutes from './routes/userRoutes';
+
 import dotenv from 'dotenv';
 import { DataTypes } from 'sequelize';
 import cors from 'cors';
@@ -135,6 +137,9 @@ sequelize.sync({ force: false }) // Sync all models
 app.use(express.json());
 app.use('/api', authRoutes);
 app.use('/api/canteen', canteenRoutes);
+
+app.use('/api/userRoutes', userRoutes);
+
 
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
