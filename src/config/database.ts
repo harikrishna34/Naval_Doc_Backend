@@ -9,4 +9,12 @@ const sequelize = new Sequelize(process.env.DATABASE_URL || '', {
   logging: console.log, // Enable logging for debugging
 });
 
+// Import models
+import '../models/item';
+import '../models/pricing';
+
+// Import and define associations
+import { defineAssociations } from '../models/associations';
+defineAssociations();
+
 export { sequelize };
