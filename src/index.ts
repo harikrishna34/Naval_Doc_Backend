@@ -140,7 +140,7 @@ app.use(express.json());
 app.use('/api', authRoutes);
 app.use('/api/canteen', canteenRoutes);
 
-app.use('/api/userRoutes', userRoutes);
+app.use('/api/user', userRoutes);
 
 app.use('/api/item', itemRoutes);
 
