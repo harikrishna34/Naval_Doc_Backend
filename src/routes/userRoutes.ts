@@ -4,7 +4,7 @@ import authenticateToken from '../middlewares/authMiddleware'; // Import the aut
 
 const router = Router();
 
-router.post('/getAllCanteens',authenticateToken, getAllCanteens);
+router.get('/getAllCanteens',authenticateToken, getAllCanteens);
 
 
 export default router;
