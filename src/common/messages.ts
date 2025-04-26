@@ -6,6 +6,16 @@ export const messages = {
       otpRequired: 'OTP is required',
       otpInvalid: 'OTP must be a 6-digit number',
       otpExpired: 'OTP has expired',
+      nameRequired: 'Name is required',
+      typeInvalid: 'Type must be either "veg" or "non-veg"',
+      quantityRequired: 'Quantity is required',
+      quantityUnitInvalid: 'Quantity unit must be either "ml" or "grams"',
+      priceRequired: 'Price is required',
+      startDateRequired: 'Start date is required',
+      endDateRequired: 'End date is required',
+      description: 'description is required',
+      currency: 'currency is required',
+
     },
     canteen: {
       nameRequired: 'Canteen name is required',
@@ -14,6 +24,12 @@ export const messages = {
       canteenCodeExists: 'Canteen with this code already exists',
       noCanteensFound: 'No canteens found',
     },
+    item: {
+      itemNameExists: 'Item Already exists',
+      noCanteensFound: 'No canteens found',
+    },
+
+    
     admin: {
       firstNameRequired: 'Admin first name is required',
       lastNameRequired: 'Admin last name is required',
@@ -30,7 +46,7 @@ export const messages = {
       rolesFetched: 'Roles fetched successfully',
       canteenCreated: 'Canteen and admin user created successfully',
       canteensFetched: 'Canteens fetched successfully',
-
+      itemCreated: "Item created successfully",
     },
     error: {
       internalServerError: 'Internal server error occurred',
@@ -38,7 +54,6 @@ export const messages = {
       tokenRequired: 'Token is required',
       invalidToken: 'Invalid or expired token',
       tokenExpired: 'Token has expired',
-
     },
   },
   HI: {
@@ -48,6 +63,13 @@ export const messages = {
       otpRequired: 'ओटीपी आवश्यक है',
       otpInvalid: 'ओटीपी 6 अंकों का होना चाहिए',
       otpExpired: 'ओटीपी की समय सीमा समाप्त हो गई है',
+      nameRequired: 'नाम आवश्यक है',
+      typeInvalid: 'प्रकार "veg" या "non-veg" होना चाहिए',
+      quantityRequired: 'मात्रा आवश्यक है',
+      quantityUnitInvalid: 'मात्रा इकाई "ml" या "grams" होनी चाहिए',
+      priceRequired: 'मूल्य आवश्यक है',
+      startDateRequired: 'प्रारंभ तिथि आवश्यक है',
+      endDateRequired: 'समाप्ति तिथि आवश्यक है',
     },
     canteen: {
       nameRequired: 'कैंटीन का नाम आवश्यक है',
@@ -55,7 +77,6 @@ export const messages = {
       contactRequired: 'संपर्क व्यक्ति आवश्यक है',
       canteenCodeExists: 'इस कोड के साथ कैंटीन पहले से मौजूद है',
       noCanteensFound: 'कोई कैंटीन नहीं मिली',
-
     },
     admin: {
       firstNameRequired: 'व्यवस्थापक का पहला नाम आवश्यक है',
@@ -73,7 +94,6 @@ export const messages = {
       rolesFetched: 'भूमिकाएं सफलतापूर्वक प्राप्त की गईं',
       canteenCreated: 'कैंटीन और व्यवस्थापक उपयोगकर्ता सफलतापूर्वक बनाया गया',
       canteensFetched: 'कैंटीन सफलतापूर्वक प्राप्त की गईं',
-
     },
     error: {
       internalServerError: 'आंतरिक सर्वर त्रुटि हुई',
@@ -81,7 +101,6 @@ export const messages = {
       tokenRequired: 'टोकन आवश्यक है',
       invalidToken: 'अमान्य या समाप्त टोकन',
       tokenExpired: 'टोकन की समय सीमा समाप्त हो गई है',
-
     },
   },
 };

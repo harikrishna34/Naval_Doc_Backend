@@ -2,6 +2,8 @@ import express from 'express';
 import authRoutes from './routes/authRoutes';
 import canteenRoutes from './routes/canteenRoutes';
 import userRoutes from './routes/userRoutes';
+import itemRoutes from './routes/itemRoutes';
+
 
 import dotenv from 'dotenv';
 import { DataTypes } from 'sequelize';
@@ -139,6 +141,9 @@ app.use('/api', authRoutes);
 app.use('/api/canteen', canteenRoutes);
 
 app.use('/api/userRoutes', userRoutes);
+
+app.use('/api/item', itemRoutes);
+
 
 
 app.listen(PORT, () => {
