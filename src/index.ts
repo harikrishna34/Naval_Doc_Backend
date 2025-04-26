@@ -3,6 +3,9 @@ import authRoutes from './routes/authRoutes';
 import canteenRoutes from './routes/canteenRoutes';
 import userRoutes from './routes/userRoutes';
 import itemRoutes from './routes/itemRoutes';
+import menuConfigurationRoutes from './routes/menuConfigurationRoutes';
+import menuRoutes from './routes/menuRoutes';
+
 
 
 import dotenv from 'dotenv';
@@ -12,6 +15,11 @@ import { sequelize } from './config/database'; // Updated import
 import Role from './models/role';
 import User from './models/user';
 import UserRole from './models/userRole';
+
+import Menu from './models/menu';
+import MenuItem from './models/menuItem';
+import Item from './models/item';
+import MenuConfiguration from './models/menuConfiguration';
 
 dotenv.config();
 
@@ -94,12 +102,18 @@ UserRole.init(
 );
 
 // Define associations
+// Define associations
 Role.hasMany(User, { foreignKey: 'roleId', as: 'users' });
 User.belongsTo(Role, { foreignKey: 'roleId', as: 'role' });
 
 User.belongsToMany(Role, { through: UserRole, foreignKey: 'userId' });
 Role.belongsToMany(User, { through: UserRole, foreignKey: 'roleId' });
 
+Menu.hasMany(MenuItem, { foreignKey: 'menuId', as: 'menuItems' });
+MenuItem.belongsTo(Menu, { foreignKey: 'menuId', as: 'menu' });
+MenuItem.belongsTo(Item, { foreignKey: 'itemId', as: 'item' });
+
+Menu.belongsTo(MenuConfiguration, { foreignKey: 'menuConfigurationId', as: 'menuConfiguration' });
 sequelize.sync({ force: false }) // Sync all models
   .then(async () => {
     console.log('All tables created successfully!');
@@ -143,6 +157,14 @@ app.use('/api/canteen', canteenRoutes);
 app.use('/api/user', userRoutes);
 
 app.use('/api/item', itemRoutes);
+
+app.use('/api/menu', menuRoutes);
+
+app.use('/api/menuconfig', menuConfigurationRoutes);
+
+
+
+
 
 
 
