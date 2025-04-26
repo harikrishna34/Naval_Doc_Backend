@@ -1,5 +1,3 @@
-'use strict';
-
 module.exports = {
   up: async (queryInterface, Sequelize) => {
     await queryInterface.createTable('users', {
@@ -10,11 +8,11 @@ module.exports = {
       },
       firstName: {
         type: Sequelize.STRING,
-        allowNull: true,
+        allowNull: false,
       },
       lastName: {
         type: Sequelize.STRING,
-        allowNull: true,
+        allowNull: false,
       },
       email: {
         type: Sequelize.STRING,
@@ -26,14 +24,15 @@ module.exports = {
         allowNull: false,
         unique: true,
       },
-      profile: {
-        type: Sequelize.STRING,
+      canteenId: {
+        type: Sequelize.INTEGER,
         allowNull: true,
-      },
-      status: {
-        type: Sequelize.STRING,
-        allowNull: false,
-        defaultValue: 'active',
+        references: {
+          model: 'canteens', // Table name of the Canteen model
+          key: 'id',
+        },
+        onUpdate: 'CASCADE',
+        onDelete: 'SET NULL',
       },
       createdById: {
         type: Sequelize.INTEGER,
@@ -54,7 +53,7 @@ module.exports = {
     });
   },
 
-  down: async (queryInterface) => {
+  down: async (queryInterface, Sequelize) => {
     await queryInterface.dropTable('users');
   },
 };

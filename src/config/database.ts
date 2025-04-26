@@ -1,18 +1,12 @@
 import { Sequelize } from 'sequelize';
+
 import dotenv from 'dotenv';
+dotenv.config(); // Load environment variables from .env file
 
-dotenv.config();
 
-const sequelize = new Sequelize(
-  process.env.DB_DATABASE as string,
-  process.env.DB_USER as string,
-  process.env.DB_PASSWORD as string,
-  {
-    host: process.env.DB_HOST,
-    port: Number(process.env.DB_PORT),
-    dialect: 'postgres',
-    logging: false, // Set to true to enable query logging
-  }
-);
+const sequelize = new Sequelize(process.env.DATABASE_URL || '', {
+  dialect: 'postgres',
+  logging: console.log, // Enable logging for debugging
+});
 
-export default sequelize;
+export { sequelize };

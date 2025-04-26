@@ -2,9 +2,25 @@ export const messages = {
   EN: {
     validation: {
       mobileRequired: 'Mobile number is required',
-      otpRequired: 'Mobile number and OTP are required',
-      invalidOtp: 'Invalid OTP',
+      mobileInvalid: 'Mobile number must be a 10-digit number',
+      otpRequired: 'OTP is required',
+      otpInvalid: 'OTP must be a 6-digit number',
       otpExpired: 'OTP has expired',
+    },
+    canteen: {
+      nameRequired: 'Canteen name is required',
+      codeRequired: 'Canteen code is required',
+      contactRequired: 'Canteen contact is required',
+      canteenCodeExists: 'Canteen with this code already exists',
+      noCanteensFound: 'No canteens found',
+    },
+    admin: {
+      firstNameRequired: 'Admin first name is required',
+      lastNameRequired: 'Admin last name is required',
+      emailRequired: 'Admin email is required',
+      emailInvalid: 'Admin email must be a valid email address',
+      mobileRequired: 'Admin mobile number is required',
+      mobileInvalid: 'Admin mobile number must be a valid 10-digit number',
     },
     success: {
       otpSent: 'OTP sent successfully',
@@ -12,29 +28,60 @@ export const messages = {
       otpResent: 'OTP resent successfully',
       roleCreated: 'Role created successfully',
       rolesFetched: 'Roles fetched successfully',
+      canteenCreated: 'Canteen and admin user created successfully',
+      canteensFetched: 'Canteens fetched successfully',
+
     },
     error: {
-      internalServerError: 'Internal server error',
+      internalServerError: 'Internal server error occurred',
       validationError: 'Validation error occurred',
+      tokenRequired: 'Token is required',
+      invalidToken: 'Invalid or expired token',
+      tokenExpired: 'Token has expired',
+
     },
   },
   HI: {
     validation: {
       mobileRequired: 'मोबाइल नंबर आवश्यक है',
-      otpRequired: 'मोबाइल नंबर और ओटीपी आवश्यक हैं',
-      invalidOtp: 'अमान्य ओटीपी',
+      mobileInvalid: 'मोबाइल नंबर 10 अंकों का होना चाहिए',
+      otpRequired: 'ओटीपी आवश्यक है',
+      otpInvalid: 'ओटीपी 6 अंकों का होना चाहिए',
       otpExpired: 'ओटीपी की समय सीमा समाप्त हो गई है',
+    },
+    canteen: {
+      nameRequired: 'कैंटीन का नाम आवश्यक है',
+      codeRequired: 'कैंटीन कोड आवश्यक है',
+      contactRequired: 'संपर्क व्यक्ति आवश्यक है',
+      canteenCodeExists: 'इस कोड के साथ कैंटीन पहले से मौजूद है',
+      noCanteensFound: 'कोई कैंटीन नहीं मिली',
+
+    },
+    admin: {
+      firstNameRequired: 'व्यवस्थापक का पहला नाम आवश्यक है',
+      lastNameRequired: 'व्यवस्थापक का अंतिम नाम आवश्यक है',
+      emailRequired: 'व्यवस्थापक का ईमेल आवश्यक है',
+      emailInvalid: 'व्यवस्थापक का ईमेल मान्य होना चाहिए',
+      mobileRequired: 'व्यवस्थापक का मोबाइल नंबर आवश्यक है',
+      mobileInvalid: 'व्यवस्थापक का मोबाइल नंबर 10 अंकों का होना चाहिए',
     },
     success: {
       otpSent: 'ओटीपी सफलतापूर्वक भेजा गया',
       otpVerified: 'ओटीपी सफलतापूर्वक सत्यापित किया गया',
-      otpResent: 'ओटीपी फिर से भेजा गया',
+      otpResent: 'ओटीपी को फिर से भेजा गया',
       roleCreated: 'भूमिका सफलतापूर्वक बनाई गई',
-      rolesFetched: 'भूमिकाएँ सफलतापूर्वक प्राप्त की गईं',
+      rolesFetched: 'भूमिकाएं सफलतापूर्वक प्राप्त की गईं',
+      canteenCreated: 'कैंटीन और व्यवस्थापक उपयोगकर्ता सफलतापूर्वक बनाया गया',
+      canteensFetched: 'कैंटीन सफलतापूर्वक प्राप्त की गईं',
+
     },
     error: {
-      internalServerError: 'आंतरिक सर्वर त्रुटि',
-      validationError: 'मान्यकरण त्रुटि हुई',
+      internalServerError: 'आंतरिक सर्वर त्रुटि हुई',
+      validationError: 'सत्यापन त्रुटि हुई',
+      tokenRequired: 'टोकन आवश्यक है',
+      invalidToken: 'अमान्य या समाप्त टोकन',
+      tokenExpired: 'टोकन की समय सीमा समाप्त हो गई है',
+
     },
   },
 };

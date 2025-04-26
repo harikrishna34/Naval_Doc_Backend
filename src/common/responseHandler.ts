@@ -19,11 +19,19 @@ export const responseHandler = {
     },
     invalidOtp: {
       status: statusCodes.BAD_REQUEST,
-      message: messages[language].validation.invalidOtp,
+      message: messages[language].validation.otpInvalid,
     },
     otpExpired: {
       status: statusCodes.BAD_REQUEST,
       message: messages[language].validation.otpExpired,
+    },
+    canteenCodeExists: {
+      status: statusCodes.BAD_REQUEST,
+      message: messages[language].canteen.canteenCodeExists || 'Canteen with this code already exists',
+    },
+    validationError: {
+      status: statusCodes.BAD_REQUEST,
+      message: messages[language].error.validationError || 'Validation error occurred',
     },
   },
   success: {
@@ -47,11 +55,15 @@ export const responseHandler = {
       status: statusCodes.SUCCESS,
       message: messages[language].success.rolesFetched || 'Roles fetched successfully',
     },
+    canteenCreated: {
+      status: statusCodes.SUCCESS,
+      message: messages[language].success.canteenCreated || 'Canteen and admin user created successfully',
+    },
   },
   error: {
     internalServerError: {
       status: statusCodes.INTERNAL_SERVER_ERROR,
-      message: messages[language].error.internalServerError,
+      message: messages[language].error.internalServerError || 'Internal server error occurred',
     },
     validationError: {
       status: statusCodes.BAD_REQUEST,

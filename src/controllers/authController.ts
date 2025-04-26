@@ -9,7 +9,7 @@ import {
   verifyOtpValidation,
   resendOtpValidation,
 } from '../validations/joiValidations';
-import sequelize from '../config/database'; // Import sequelize for transaction management
+import { sequelize } from '../config/database'; // Import sequelize for transaction management
 import { responseHandler } from '../common/responseHandler';
 import { statusCodes } from '../common/statusCodes';
 import logger from '../common/logger';

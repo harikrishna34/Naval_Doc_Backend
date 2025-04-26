@@ -1,24 +1,100 @@
 import express from 'express';
 import authRoutes from './routes/authRoutes';
+import canteenRoutes from './routes/canteenRoutes';
 import dotenv from 'dotenv';
-import { sequelize } from './models';
-import cors from 'cors'; // Import CORS
+import { DataTypes } from 'sequelize';
+import cors from 'cors';
+import { sequelize } from './config/database'; // Updated import
 import Role from './models/role';
 import User from './models/user';
 import UserRole from './models/userRole';
 
-const app = express();
 dotenv.config();
+
+const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Enable CORS with open options
+// Enable CORS
 const corsOptions = {
-  origin: true, // Allow requests from any origin
-  methods: ['GET', 'POST', 'PUT', 'DELETE'], // Allowed HTTP methods
-  credentials: true, // Allow cookies
+  origin: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  credentials: true,
 };
+app.use(cors(corsOptions));
 
-app.use(cors(corsOptions)); // Apply CORS globally
+// Initialize models
+User.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    firstName: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    lastName: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    email: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      unique: true,
+    },
+    mobile: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      unique: true,
+    },
+    canteenId: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+  },
+  { sequelize, modelName: 'User' }
+);
+Role.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    name: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      unique: true,
+    },
+  },
+  { sequelize, modelName: 'Role' }
+);
+UserRole.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    userId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+    roleId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+  },
+  { sequelize, modelName: 'UserRole' }
+);
+
+// Define associations
+Role.hasMany(User, { foreignKey: 'roleId', as: 'users' });
+User.belongsTo(Role, { foreignKey: 'roleId', as: 'role' });
+
+User.belongsToMany(Role, { through: UserRole, foreignKey: 'userId' });
+Role.belongsToMany(User, { through: UserRole, foreignKey: 'roleId' });
 
 sequelize.sync({ force: false }) // Sync all models
   .then(async () => {
@@ -27,21 +103,19 @@ sequelize.sync({ force: false }) // Sync all models
     // Seed admin account and roles
     const seedAdminAccount = async () => {
       try {
-        // Create default roles
         const [adminRole] = await Role.findOrCreate({ where: { name: 'Admin' } });
-        const [userRole] = await Role.findOrCreate({ where: { name: 'User' } });
+        await Role.findOrCreate({ where: { name: 'User' } });
 
-        // Create admin user
         const [adminUser] = await User.findOrCreate({
           where: { email: 'admin@example.com' },
           defaults: {
-            firstName: 'Admin', // Use firstName
-            lastName: 'User', // Use lastName
-            mobile: '1234567890', // Add mobile number
+            firstName: 'Admin',
+            lastName: 'User',
+            mobile: '1234567890',
+            canteenId: null,
           },
         });
 
-        // Assign admin role to the admin user
         await UserRole.findOrCreate({
           where: { userId: adminUser.id, roleId: adminRole.id },
         });
@@ -60,6 +134,7 @@ sequelize.sync({ force: false }) // Sync all models
 
 app.use(express.json());
 app.use('/api', authRoutes);
+app.use('/api/canteen', canteenRoutes);
 
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
