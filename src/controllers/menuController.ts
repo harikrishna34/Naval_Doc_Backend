@@ -14,13 +14,39 @@ import MenuConfiguration from '../models/menuConfiguration';
 import Canteen from '../models/canteen'; // Import the Canteen model
 
 export const createMenuWithItems = async (req: Request, res: Response): Promise<Response> => {
-  const { menuConfigurationId, description, items, canteenId } = req.body; // Include canteenId in the request body
+  let { menuConfigurationId, description, items, canteenId, startTime, endTime } = req.body; // Include startTime and endTime in the request body
   const userId = req.user?.id; // Assuming `req.user` contains the authenticated user's details
 
-  if (!menuConfigurationId || !items || !Array.isArray(items) || !canteenId) {
-    logger.error('Validation error: menuConfigurationId, items, and canteenId are required');
+  // Validate required fields
+  if (!menuConfigurationId || !items || !Array.isArray(items) || !canteenId || !startTime || !endTime) {
+    logger.error('Validation error: menuConfigurationId, items, canteenId, startTime, and endTime are required');
     return res.status(statusCodes.BAD_REQUEST).json({
       message: getMessage('validation.validationError'),
+    });
+  }
+
+  // Validate date format for startTime and endTime
+  if (!moment(startTime, 'DD-MM-YYYY', true).isValid()) {
+    logger.error('Validation error: startTime must be in the format DD-MM-YYYY');
+    return res.status(statusCodes.BAD_REQUEST).json({
+      message: getMessage('validation.invalidStartTime'),
+    });
+  }
+
+  if (!moment(endTime, 'DD-MM-YYYY', true).isValid()) {
+    logger.error('Validation error: endTime must be in the format DD-MM-YYYY');
+    return res.status(statusCodes.BAD_REQUEST).json({
+      message: getMessage('validation.invalidEndTime'),
+    });
+  }
+
+  // Ensure startTime is before endTime
+  startTime = moment(startTime, 'DD-MM-YYYY');
+  endTime = moment(endTime, 'DD-MM-YYYY');
+  if (!startTime.isBefore(endTime)) {
+    logger.error('Validation error: startTime must be before endTime');
+    return res.status(statusCodes.BAD_REQUEST).json({
+      message: getMessage('validation.startTimeBeforeEndTime'),
     });
   }
 
@@ -45,15 +71,15 @@ export const createMenuWithItems = async (req: Request, res: Response): Promise<
       });
     }
 
-    // Create a new menu using the configuration
+    // Create a new menu using the provided startTime and endTime
     const menu = await Menu.create(
       {
         name: menuConfiguration.name, // Use the name from the configuration
         description,
         menuConfigurationId, // Reference the configuration
         canteenId, // Reference the canteen
-        startTime: menuConfiguration.defaultStartTime, // Use the default start time from the configuration
-        endTime: menuConfiguration.defaultEndTime, // Use the default end time from the configuration
+        startTime, // Use the startTime from the payload
+        endTime, // Use the endTime from the payload
         status: 'active',
         createdById: userId,
         updatedById: userId,
