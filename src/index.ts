@@ -20,6 +20,7 @@ import Menu from './models/menu';
 import MenuItem from './models/menuItem';
 import Item from './models/item';
 import MenuConfiguration from './models/menuConfiguration';
+import Canteen from './models/canteen';
 
 dotenv.config();
 
@@ -102,17 +103,17 @@ UserRole.init(
 );
 
 // Define associations
-// Define associations
 Role.hasMany(User, { foreignKey: 'roleId', as: 'users' });
 User.belongsTo(Role, { foreignKey: 'roleId', as: 'role' });
 
 User.belongsToMany(Role, { through: UserRole, foreignKey: 'userId' });
 Role.belongsToMany(User, { through: UserRole, foreignKey: 'roleId' });
 
-Menu.hasMany(MenuItem, { foreignKey: 'menuId', as: 'menuItems' });
-MenuItem.belongsTo(Menu, { foreignKey: 'menuId', as: 'menu' });
+Menu.hasMany(MenuItem, { foreignKey: 'menuId', as: 'menuItems' }); // Unique alias for Menu -> MenuItem
+MenuItem.belongsTo(Menu, { foreignKey: 'menuId', as: 'menu' }); // Reverse association
 MenuItem.belongsTo(Item, { foreignKey: 'itemId', as: 'item' });
 
+Menu.belongsTo(Canteen, { foreignKey: 'canteenId', as: 'canteen' });
 Menu.belongsTo(MenuConfiguration, { foreignKey: 'menuConfigurationId', as: 'menuConfiguration' });
 sequelize.sync({ force: false }) // Sync all models
   .then(async () => {

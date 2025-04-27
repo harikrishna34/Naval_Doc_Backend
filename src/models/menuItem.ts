@@ -84,8 +84,8 @@ MenuItem.init(
   }
 );
 
-// MenuItem.belongsTo(Menu, { foreignKey: 'menuId', as: 'menu' }); // Define association with Menu
-// MenuItem.belongsTo(Item, { foreignKey: 'itemId', as: 'item' }); // Define association with Item
+// Menu.hasMany(MenuItem, { foreignKey: 'menuId', as: 'menuItemsForMenu' }); // Unique alias
+// MenuItem.belongsTo(Menu, { foreignKey: 'menuId', as: 'menu' }); // Reverse association
 
 
 export default MenuItem;

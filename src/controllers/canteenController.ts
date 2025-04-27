@@ -37,7 +37,7 @@ export const createCanteen = async (req: Request, res: Response): Promise<Respon
     }
 
     // Create a new canteen
-    const canteen = await Canteen.create(
+    const canteen: any = await Canteen.create(
       {
         canteenName,
         canteenCode,
