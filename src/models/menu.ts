@@ -1,16 +1,18 @@
 import { DataTypes, Model } from 'sequelize';
 import { sequelize } from '../config/database';
 import moment from 'moment';
-import MenuConfiguration from './menuConfiguration'; // Import MenuConfiguration model
+import MenuConfiguration from './menuConfiguration';
 import MenuItem from './menuItem';
+import Canteen from './canteen'; // Import the Canteen model
 
 class Menu extends Model {
   public id!: number;
   public name!: string;
   public description!: string | null;
-  public startTime!: number; // Start time in Unix format
-  public endTime!: number; // End time in Unix format
+  public startTime!: number;
+  public endTime!: number;
   public status!: string;
+  public canteenId!: number; // Foreign key to Canteen
   public createdById!: number | null;
   public updatedById!: number | null;
   public createdAt!: number;
@@ -33,11 +35,11 @@ Menu.init(
       allowNull: true,
     },
     startTime: {
-      type: DataTypes.INTEGER, // Store as Unix timestamp
+      type: DataTypes.INTEGER,
       allowNull: false,
     },
     endTime: {
-      type: DataTypes.INTEGER, // Store as Unix timestamp
+      type: DataTypes.INTEGER,
       allowNull: false,
     },
     status: {
@@ -45,9 +47,19 @@ Menu.init(
       allowNull: false,
       defaultValue: 'active',
     },
+    canteenId: {
+      type: DataTypes.INTEGER,
+      allowNull: false, // Ensure every menu is associated with a canteen
+      references: {
+        model: Canteen, // Reference the Canteen model
+        key: 'id',
+      },
+      onUpdate: 'CASCADE',
+      onDelete: 'CASCADE',
+    },
     menuConfigurationId: {
-      type: DataTypes.INTEGER, // Foreign key to MenuConfiguration
-      allowNull: true, // Optional: Menus can be custom or based on configuration
+      type: DataTypes.INTEGER,
+      allowNull: true,
       references: {
         model: MenuConfiguration,
         key: 'id',
@@ -100,10 +112,9 @@ Menu.init(
   }
 );
 
-// Define association
+// Define associations
+// Menu.belongsTo(Canteen, { foreignKey: 'canteenId', as: 'canteen' });
 // Menu.belongsTo(MenuConfiguration, { foreignKey: 'menuConfigurationId', as: 'menuConfiguration' });
-
-// Menu.hasMany(MenuItem, { foreignKey: 'menuId', as: 'menuItems' }); // Define the association
-// MenuItem.belongsTo(Menu, { foreignKey: 'menuId', as: 'menu' }); // Reverse association
+// Menu.hasMany(MenuItem, { foreignKey: 'menuId', as: 'menuItems' });
 
 export default Menu;

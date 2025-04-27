@@ -11,13 +11,14 @@ import moment from 'moment';
 import Menu from '../models/menu';
 import MenuItem from '../models/menuItem';
 import MenuConfiguration from '../models/menuConfiguration';
+import Canteen from '../models/canteen'; // Import the Canteen model
 
 export const createMenuWithItems = async (req: Request, res: Response): Promise<Response> => {
-  const { menuConfigurationId, description, items } = req.body;
+  const { menuConfigurationId, description, items, canteenId } = req.body; // Include canteenId in the request body
   const userId = req.user?.id; // Assuming `req.user` contains the authenticated user's details
 
-  if (!menuConfigurationId || !items || !Array.isArray(items)) {
-    logger.error('Validation error: menuConfigurationId and items are required');
+  if (!menuConfigurationId || !items || !Array.isArray(items) || !canteenId) {
+    logger.error('Validation error: menuConfigurationId, items, and canteenId are required');
     return res.status(statusCodes.BAD_REQUEST).json({
       message: getMessage('validation.validationError'),
     });
@@ -26,6 +27,15 @@ export const createMenuWithItems = async (req: Request, res: Response): Promise<
   const transaction: Transaction = await sequelize.transaction();
 
   try {
+    // Check if the canteen exists
+    const canteen = await Canteen.findByPk(canteenId);
+    if (!canteen) {
+      logger.warn(`Canteen with ID ${canteenId} not found`);
+      return res.status(statusCodes.NOT_FOUND).json({
+        message: getMessage('canteen.notFound'),
+      });
+    }
+
     // Fetch the menu configuration
     const menuConfiguration = await MenuConfiguration.findByPk(menuConfigurationId);
     if (!menuConfiguration) {
@@ -41,6 +51,7 @@ export const createMenuWithItems = async (req: Request, res: Response): Promise<
         name: menuConfiguration.name, // Use the name from the configuration
         description,
         menuConfigurationId, // Reference the configuration
+        canteenId, // Reference the canteen
         startTime: menuConfiguration.defaultStartTime, // Use the default start time from the configuration
         endTime: menuConfiguration.defaultEndTime, // Use the default end time from the configuration
         status: 'active',
@@ -99,49 +110,61 @@ export const createMenuWithItems = async (req: Request, res: Response): Promise<
 };
 
 export const getAllMenus = async (req: Request, res: Response): Promise<Response> => {
-    try {
-      const menus = await Menu.findAll({
-        include: [
-          {
-            model: MenuConfiguration,
-            as: 'menuConfiguration', // Include menu configuration details
-          },
-          {
-            model: MenuItem,
-            as: 'menuItems', // Include menu items
-            include: [
-              {
-                model: Item,
-                as: 'item', // Include item details
-              },
-            ],
-          },
-        ],
-      });
-  
-      // Convert images to base64 format
-      const menusWithBase64Images = menus.map((menu) => {
-        const menuData = menu.toJSON();
-        menuData.menuItems = menuData.menuItems.map((menuItem: any) => {
-          if (menuItem.item && menuItem.item.image) {
-            // Convert image to base64
-            menuItem.item.image = Buffer.from(menuItem.item.image).toString('base64');
-          }
-          return menuItem;
-        });
-        return menuData;
-      });
-  
-      return res.status(statusCodes.SUCCESS).json({
-        message: getMessage('success.menusFetched'),
-        data: menusWithBase64Images,
-      });
-    } catch (error: unknown) {
-      logger.error(`Error fetching menus: ${error instanceof Error ? error.message : error}`);
-      return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
-        message: getMessage('error.internalServerError'),
-      });
+  try {
+    const { canteenId } = req.query; // Get canteenId from query parameters
+
+    const whereClause: any = {};
+    if (canteenId) {
+      whereClause.canteenId = canteenId; // Filter by canteenId if provided
     }
-  };
+
+    const menus = await Menu.findAll({
+      where: whereClause, // Apply the filter
+      include: [
+        {
+          model: Canteen,
+          as: 'canteen', // Include canteen details
+        },
+        {
+          model: MenuConfiguration,
+          as: 'menuConfiguration', // Include menu configuration details
+        },
+        {
+          model: MenuItem,
+          as: 'menuItems', // Include menu items
+          include: [
+            {
+              model: Item,
+              as: 'item', // Include item details
+            },
+          ],
+        },
+      ],
+    });
+
+    // Convert images to base64 format
+    const menusWithBase64Images = menus.map((menu) => {
+      const menuData = menu.toJSON();
+      menuData.menuItems = menuData.menuItems.map((menuItem: any) => {
+        if (menuItem.item && menuItem.item.image) {
+          // Convert image to base64
+          menuItem.item.image = Buffer.from(menuItem.item.image).toString('base64');
+        }
+        return menuItem;
+      });
+      return menuData;
+    });
+
+    return res.status(statusCodes.SUCCESS).json({
+      message: getMessage('success.menusFetched'),
+      data: menusWithBase64Images,
+    });
+  } catch (error: unknown) {
+    logger.error(`Error fetching menus: ${error instanceof Error ? error.message : error}`);
+    return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
+      message: getMessage('error.internalServerError'),
+    });
+  }
+};
 
 

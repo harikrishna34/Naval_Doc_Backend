@@ -1,16 +1,7 @@
 import { DataTypes, Model } from 'sequelize';
 import { sequelize } from '../config/database';
 
-class Canteen extends Model {
-  public id!: number;
-  public canteenName!: string;
-  public canteenCode!: string;
-  public canteenImage!: Buffer | null;
-  public createdById!: number | null;
-  public updatedById!: number | null;
-  public createdAt!: number | null;
-  public updatedAt!: number | null;
-}
+class Canteen extends Model {}
 
 Canteen.init(
   {
@@ -43,19 +34,19 @@ Canteen.init(
     createdAt: {
       type: DataTypes.INTEGER,
       allowNull: false,
-      defaultValue: () => Math.floor(Date.now() / 1000), // Unix timestamp in seconds
+      defaultValue: () => Math.floor(Date.now() / 1000),
     },
     updatedAt: {
       type: DataTypes.INTEGER,
       allowNull: false,
-      defaultValue: () => Math.floor(Date.now() / 1000), // Unix timestamp in seconds
+      defaultValue: () => Math.floor(Date.now() / 1000),
     },
   },
   {
     sequelize,
     modelName: 'Canteen',
     tableName: 'canteens',
-    timestamps: false, // Disable Sequelize's automatic timestamps
+    timestamps: false,
   }
 );
 
