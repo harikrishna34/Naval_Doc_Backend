@@ -1,4 +1,6 @@
 import express from 'express';
+import bodyParser from 'body-parser';
+
 import authRoutes from './routes/authRoutes';
 import canteenRoutes from './routes/canteenRoutes';
 import userRoutes from './routes/userRoutes';
@@ -21,10 +23,19 @@ import MenuItem from './models/menuItem';
 import Item from './models/item';
 import MenuConfiguration from './models/menuConfiguration';
 import Canteen from './models/canteen';
+import cartRoutes from './routes/cartRoutes';
+import Pricing from './models/pricing';
+import CartItem from './models/cartItem'; // Import CartItem
+import Cart from './models/cart'; // Import Cart
+
+
+
 
 dotenv.config();
 
 const app = express();
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
 const PORT = process.env.PORT || 3000;
 
 // Enable CORS
@@ -111,10 +122,24 @@ Role.belongsToMany(User, { through: UserRole, foreignKey: 'roleId' });
 
 Menu.hasMany(MenuItem, { foreignKey: 'menuId', as: 'menuItems' }); // Unique alias for Menu -> MenuItem
 MenuItem.belongsTo(Menu, { foreignKey: 'menuId', as: 'menu' }); // Reverse association
-MenuItem.belongsTo(Item, { foreignKey: 'itemId', as: 'item' });
+MenuItem.belongsTo(Item, { foreignKey: 'itemId', as: 'item' }); // Keep this alias as 'item'
 
 Menu.belongsTo(Canteen, { foreignKey: 'canteenId', as: 'canteen' });
 Menu.belongsTo(MenuConfiguration, { foreignKey: 'menuConfigurationId', as: 'menuConfiguration' });
+
+
+// Cart associations
+Cart.hasMany(CartItem, { foreignKey: 'cartId', as: 'cartItems' }); // Ensure this association exists
+CartItem.belongsTo(Cart, { foreignKey: 'cartId', as: 'cart' }); // Reverse association
+
+// CartItem associations
+CartItem.belongsTo(Item, { foreignKey: 'itemId', as: 'item' }); // Ensure this association exists
+Item.hasMany(CartItem, { foreignKey: 'itemId', as: 'cartItems' }); // Reverse association
+
+
+// Cart associations
+Cart.belongsTo(MenuConfiguration, { foreignKey: 'menuConfigurationId', as: 'menuConfiguration' });
+Cart.belongsTo(Canteen, { foreignKey: 'canteenId', as: 'canteen' });
 sequelize.sync({ force: false }) // Sync all models
   .then(async () => {
     console.log('All tables created successfully!');
@@ -162,6 +187,11 @@ app.use('/api/item', itemRoutes);
 app.use('/api/menu', menuRoutes);
 
 app.use('/api/menuconfig', menuConfigurationRoutes);
+
+app.use('/api/cart', cartRoutes);
+
+
+
 
 
 

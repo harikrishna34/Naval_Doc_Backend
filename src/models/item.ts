@@ -16,6 +16,7 @@ class Item extends Model {
   public updatedById!: number | null;
   public createdAt!: number; // Unix timestamp
   public updatedAt!: number; // Unix timestamp
+    pricing: any;
 }
 
 Item.init(
