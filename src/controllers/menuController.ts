@@ -7,11 +7,15 @@ import { createItemValidation } from '../validations/joiValidations';
 import logger from '../common/logger';
 import { getMessage } from '../common/utils';
 import { statusCodes } from '../common/statusCodes';
-import moment from 'moment';
+import moment from 'moment-timezone';
+moment.tz.setDefault('Asia/Kolkata');
+
+
 import Menu from '../models/menu';
 import MenuItem from '../models/menuItem';
 import MenuConfiguration from '../models/menuConfiguration';
 import Canteen from '../models/canteen'; // Import the Canteen model
+import { Op } from 'sequelize';
 
 export const createMenuWithItems = async (req: Request, res: Response): Promise<Response> => {
   let { menuConfigurationId, description, items, canteenId, startTime, endTime } = req.body; // Include startTime and endTime in the request body
@@ -187,6 +191,204 @@ export const getAllMenus = async (req: Request, res: Response): Promise<Response
     });
   } catch (error: unknown) {
     logger.error(`Error fetching menus: ${error instanceof Error ? error.message : error}`);
+    return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
+      message: getMessage('error.internalServerError'),
+    });
+  }
+};
+
+export const getMenusForNextTwoDaysGroupedByDateAndConfiguration = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    const { canteenId } = req.query; // Optional filter by canteenId
+    // Use moment to get the current date and next 2 days
+    const now = moment(); // Current time
+    const today = moment().startOf('day');
+    const tomorrow = moment().add(1, 'days').startOf('day');
+    const dayAfterTomorrow = moment().add(2, 'days').startOf('day');
+
+    const todayUnix = today.unix(); // Start of today as Unix timestamp
+    const dayAfterTomorrowUnix = moment().add(2, 'days').endOf('day').unix(); // End of the day after tomorrow as Unix timestamp
+
+    // Construct where clause to fetch menus valid from today to dayAfterTomorrow
+    const whereClause: any = {
+      startTime: {
+        [Op.lte]: dayAfterTomorrowUnix, // Menus that start on or before dayAfterTomorrow
+      },
+      endTime: {
+        [Op.gte]: todayUnix, // Menus that end on or after today
+      },
+    };
+
+    if (canteenId) {
+      whereClause.canteenId = canteenId; // Filter by canteenId if provided
+    }
+
+    // Debug the SQL query
+
+    const menus = await Menu.findAll({
+      where: whereClause,
+      include: [
+        {
+          model: MenuConfiguration,
+          as: 'menuConfiguration',
+          attributes: ['id', 'name', 'defaultStartTime', 'defaultEndTime'], // Use defaultStartTime and defaultEndTime
+        },
+      ],
+      order: [['startTime', 'ASC']], // Order by startTime to ensure consistent grouping
+      logging: console.log // Log the SQL query
+    });
+
+  if(menus.length ===0){
+    return res.status(statusCodes.NOT_FOUND).json({
+      message: 'No Menu Found',
+    });
+
+  }
+
+
+    // Initialize grouped menus with empty objects for the next three days
+    const groupedMenus: Record<string, Record<string, any[]>> = {
+      [today.format('DD-MM-YYYY')]: {},
+      [tomorrow.format('DD-MM-YYYY')]: {},
+      [dayAfterTomorrow.format('DD-MM-YYYY')]: {},
+    };
+
+    // Iterate over each menu and check if its date range overlaps with the grouped dates
+    menus.forEach((menu, index) => {
+      const menuData = menu.toJSON();
+      
+      const menuStartDate = moment.unix(menuData.startTime).startOf('day');
+      const menuEndDate = moment.unix(menuData.endTime).endOf('day');
+      const menuConfigName = menuData.menuConfiguration?.name || 'Unconfigured';
+
+      // Check if menuConfiguration is valid for the current date
+      const menuConfigStartTime = menuData.menuConfiguration?.defaultStartTime
+        ? moment.unix(menuData.menuConfiguration.defaultStartTime)
+        : null;
+      const menuConfigEndTime = menuData.menuConfiguration?.defaultEndTime
+        ? moment.unix(menuData.menuConfiguration.defaultEndTime)
+        : null;
+
+      // Convert defaultEndTime to HH:MM A format for display
+      const formattedDefaultEndTime = menuData.menuConfiguration?.defaultEndTime
+        ? moment.unix(menuData.menuConfiguration.defaultEndTime).format('HH:mm A')
+        : null;
+
+      // Iterate over the groupedMenus keys (dates)
+      Object.keys(groupedMenus).forEach((dateKey) => {
+        const currentDate = moment(dateKey, 'DD-MM-YYYY').startOf('day');
+
+        // Check if the current date falls within the menu's start and end date range
+        const isMenuValid = currentDate.isBetween(menuStartDate, menuEndDate, 'day', '[]');
+
+        // For future dates (tomorrow and dayAfterTomorrow), we only care about menu validity
+        // For today, we need to check the current time against the menu configuration time
+        let isValid = false;
+        
+        if (currentDate.isAfter(today, 'day')) {
+          // For tomorrow and dayAfterTomorrow
+          isValid = isMenuValid;
+        } else {
+          // For today
+          const isTimeValidForToday =
+            (!menuConfigStartTime || now.isSameOrAfter(menuConfigStartTime)) &&
+            (!menuConfigEndTime || now.isSameOrBefore(menuConfigEndTime));
+          isValid = isMenuValid && isTimeValidForToday;
+        }
+
+        if (isValid) {
+          // Initialize the configuration group if it doesn't exist
+          if (!groupedMenus[dateKey][menuConfigName]) {
+            groupedMenus[dateKey][menuConfigName] = [];
+          }
+
+          // Push the menu data into the appropriate group
+          groupedMenus[dateKey][menuConfigName].push({
+            id: menuData.id, // Include menu ID
+            name: menuData.name,
+            startTime: menuData.startTime,
+            endTime: menuData.endTime,
+            menuConfiguration: {
+              ...menuData.menuConfiguration,
+              formattedDefaultEndTime, // Add formatted defaultEndTime
+            },
+          });
+          
+        }
+      });
+    });
+
+
+    return res.status(statusCodes.SUCCESS).json({
+      message: 'Menus fetched successfully',
+      data: groupedMenus,
+    });
+  } catch (error: unknown) {
+    logger.error(`Error fetching menus for the next two days: ${error instanceof Error ? error.message : error}`);
+    return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
+      message: 'Internal server error',
+    });
+  }
+};
+
+export const getMenuById = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    const { id } = req.query; // Get menu ID from route parameters
+    
+    if (!id) {
+      return res.status(statusCodes.BAD_REQUEST).json({
+        message: getMessage('validation.validationError'),
+      });
+    }
+
+    const menu = await Menu.findByPk(id as string, {
+      include: [
+        // {
+        //   model: Canteen,
+        //   as: 'canteen', // Include canteen details
+        //   attributes: ['id', 'name', 'location', 'status'], // Include only necessary fields, excluding image
+        // },
+        {
+          model: MenuConfiguration,
+          as: 'menuConfiguration', // Include menu configuration details
+        },
+        {
+          model: MenuItem,
+          as: 'menuItems', // Include menu items
+          include: [
+            {
+              model: Item,
+              as: 'item', // Include item details
+            },
+          ],
+        },
+      ],
+    });
+
+    if (!menu) {
+      return res.status(statusCodes.NOT_FOUND).json({
+        message: getMessage('menu.notFound'),
+      });
+    }
+
+    // Convert menu to plain object
+    const menuData = menu.toJSON();
+
+    // Convert images to base64 format
+    menuData.menuItems = menuData.menuItems.map((menuItem: any) => {
+      if (menuItem.item && menuItem.item.image) {
+        // Convert image to base64
+        menuItem.item.image = Buffer.from(menuItem.item.image).toString('base64');
+      }
+      return menuItem;
+    });
+
+    return res.status(statusCodes.SUCCESS).json({
+      message: getMessage('success.menuFetched'),
+      data: menuData,
+    });
+  } catch (error: unknown) {
+    logger.error(`Error fetching menu by id: ${error instanceof Error ? error.message : error}`);
     return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
       message: getMessage('error.internalServerError'),
     });
