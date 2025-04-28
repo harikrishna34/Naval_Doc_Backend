@@ -89,6 +89,7 @@ export const verifyOtp = async (req: Request, res: Response) => {
   const transaction = await sequelize.transaction(); // Start a transaction
 
   try {
+    // Find the OTP record
     const otpRecord = await Otp.findOne({ where: { mobile, otp }, transaction });
 
     if (!otpRecord) {
@@ -113,12 +114,23 @@ export const verifyOtp = async (req: Request, res: Response) => {
     // OTP is valid, delete the OTP record
     await otpRecord.destroy({ transaction });
 
-    // Generate a JWT token using the utility function
-    const token = generateToken({ mobile });
+    // Fetch the user associated with the mobile number
+    const user = await User.findOne({ where: { mobile }, transaction });
+
+    if (!user) {
+      logger.error(`User not found for mobile ${mobile}`);
+      await transaction.rollback();
+      return res
+        .status(statusCodes.NOT_FOUND)
+        .json({ message: getMessage('user.notFound') });
+    }
+
+    // Generate a JWT token using the userId
+    const token = generateToken({ userId: user.id });
 
     await transaction.commit(); // Commit the transaction
 
-    logger.info(`OTP verified for mobile ${mobile}`);
+    logger.info(`OTP verified for mobile ${mobile}, token generated for userId ${user.id}`);
     res
       .status(statusCodes.SUCCESS)
       .json({ message: responseHandler.success.otpVerified.message, token });
