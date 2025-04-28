@@ -1,5 +1,11 @@
 import express from 'express';
-import {addToCart,clearCart,removeCartItem,getCart,updateCartItem} from '../controllers/cartController';
+import {
+  addToCart,
+  updateCartItem,
+  removeCartItem,
+  getCart,
+  clearCart,
+} from '../controllers/cartController';
 import authenticateToken from '../middlewares/authMiddleware'; // Import the authentication middleware
 
 const router = express.Router();
@@ -13,6 +19,7 @@ router.post('/updateCartItem', authenticateToken, updateCartItem);
 
 router.post('/removeCartItem', authenticateToken, removeCartItem);
 
-router.get('clearCart', authenticateToken, clearCart);
+// Fix the route for clearing the cart
+router.get('/clearCart', authenticateToken, clearCart);
 
 export default router;

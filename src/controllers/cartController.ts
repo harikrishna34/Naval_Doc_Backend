@@ -21,7 +21,10 @@ export const addToCart = async (req: Request, res: Response): Promise<Response> 
   const transaction = await sequelize.transaction({ isolationLevel: Transaction.ISOLATION_LEVELS.READ_COMMITTED });
 
   try {
-    const { userId, itemId, quantity, menuId, canteenId, menuConfigurationId } = req.body;
+
+    const { userId } = req.user as { userId: string }; // Extract userId from the request body
+
+    const {  itemId, quantity, menuId, canteenId, menuConfigurationId } = req.body;
 
     // Validate required fields
     if (!userId || !itemId || !quantity || !menuId || !canteenId || !menuConfigurationId) {
@@ -141,8 +144,10 @@ export const updateCartItem = async (req: Request, res: Response): Promise<Respo
 
   try {
     const { cartId, cartItemId, quantity } = req.body; // Extract values from the request body
+
     // Validate required fields
     if (!cartId || !cartItemId || !quantity) {
+      console.log('Validation failed. Missing cartId, cartItemId, or quantity:', req.body);
       return res.status(statusCodes.BAD_REQUEST).json({
         message: getMessage('validation.validationError'),
         errors: ['cartId, cartItemId, and quantity are required'],
@@ -150,6 +155,7 @@ export const updateCartItem = async (req: Request, res: Response): Promise<Respo
     }
 
     if (quantity <= 0) {
+      console.log('Validation failed. Quantity must be greater than 0:', quantity);
       return res.status(statusCodes.BAD_REQUEST).json({
         message: getMessage('validation.validationError'),
         errors: ['Quantity must be greater than 0'],
@@ -157,8 +163,10 @@ export const updateCartItem = async (req: Request, res: Response): Promise<Respo
     }
 
     // Verify the cart exists
+    console.log('Fetching cart with ID:', cartId);
     const cart = await Cart.findByPk(cartId, { transaction });
     if (!cart) {
+      console.log('Cart not found with ID:', cartId);
       await transaction.rollback();
       return res.status(statusCodes.NOT_FOUND).json({
         message: getMessage('cart.notFound'),
@@ -166,11 +174,13 @@ export const updateCartItem = async (req: Request, res: Response): Promise<Respo
     }
 
     // Verify the cart item exists and belongs to the specified cart
+    console.log('Fetching cart item with cartItemId:', cartItemId, 'and cartId:', cartId);
     const cartItem = await CartItem.findOne({
-      where: { id: cartItemId, cartId }, // Ensure the cartItem belongs to the specified cart
+      where: { itemId: cartItemId, cartId }, // Ensure the cartItem belongs to the specified cart
       transaction,
     });
     if (!cartItem) {
+      console.log('CartItem not found or does not belong to the specified cartId:', cartId);
       await transaction.rollback();
       return res.status(statusCodes.NOT_FOUND).json({
         message: getMessage('cart.itemNotFound'),
@@ -178,16 +188,19 @@ export const updateCartItem = async (req: Request, res: Response): Promise<Respo
     }
 
     // Update the cart item
+    console.log('Updating cart item with ID:', cartItemId);
     cartItem.quantity = quantity;
     cartItem.total = cartItem.price * quantity;
     await cartItem.save({ transaction });
 
     // Update the cart total
+    console.log('Updating cart total for cartId:', cartId);
     const cartItems = await CartItem.findAll({ where: { cartId }, transaction });
     cart.totalAmount = cartItems.reduce((sum, item) => sum + item.total, 0);
     await cart.save({ transaction });
 
     // Commit transaction
+    console.log('Committing transaction for updating cart item with ID:', cartItemId);
     await transaction.commit();
 
     return res.status(statusCodes.SUCCESS).json({
@@ -212,6 +225,7 @@ export const removeCartItem = async (req: Request, res: Response): Promise<Respo
   try {
     const { cartId, cartItemId } = req.body; // Extract cartId and cartItemId from the request body
 
+    console.log("!!!!!!!!!!!!!!!!");
     // Validate required fields
     if (!cartId || !cartItemId) {
       return res.status(statusCodes.BAD_REQUEST).json({
@@ -221,6 +235,8 @@ export const removeCartItem = async (req: Request, res: Response): Promise<Respo
     }
 
     // Verify the cart exists
+    console.log("@@@@@@@@@@@@@@@@@@!");
+
     const cart = await Cart.findByPk(cartId, { transaction });
     if (!cart) {
       await transaction.rollback();
@@ -228,26 +244,37 @@ export const removeCartItem = async (req: Request, res: Response): Promise<Respo
         message: getMessage('cart.notFound'),
       });
     }
+    console.log("######################");
 
     // Verify the cart item exists and belongs to the specified cart
     const cartItem = await CartItem.findOne({
-      where: { id: cartItemId, cartId }, // Ensure the cartItem belongs to the specified cart
+      where: {
+        itemId: cartItemId, // Use itemId instead of itemid
+        cartId: cartId,
+      },
       transaction,
     });
+
+    console.log("$$$$$$$$$$$$$$$$$$$$$##########################");
+
     if (!cartItem) {
       await transaction.rollback();
       return res.status(statusCodes.NOT_FOUND).json({
         message: getMessage('cart.itemNotFound'),
       });
     }
+    console.log("%%%%%%%%%%%%%%%%%%%%%%%");
 
     // Remove the cart item
     await cartItem.destroy({ transaction });
+    console.log("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$");
 
     // Update the cart total
     const cartItems = await CartItem.findAll({ where: { cartId }, transaction });
     cart.totalAmount = cartItems.reduce((sum, item) => sum + item.total, 0);
     await cart.save({ transaction });
+
+    console.log("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$@@@@@@@@@@@@@@@@");
 
     // Commit transaction
     await transaction.commit();
@@ -272,8 +299,7 @@ export const removeCartItem = async (req: Request, res: Response): Promise<Respo
  */
 export const getCart = async (req: Request, res: Response): Promise<Response> => {
   try {
-    const { userId } = req.query;
-
+    const { userId } = req.user as { userId: string }; // Extract userId from the request body
     if (!userId) {
       return res.status(statusCodes.BAD_REQUEST).json({
         message: getMessage('validation.validationError'),
@@ -340,8 +366,9 @@ export const clearCart = async (req: Request, res: Response): Promise<Response> 
   const transaction = await sequelize.transaction({ isolationLevel: Transaction.ISOLATION_LEVELS.READ_COMMITTED });
 
   try {
-    const { userId } = req.params;
+    const { userId } = req.user as { userId: string }; // Extract userId from the request body
 
+    // Validate required fields
     if (!userId) {
       return res.status(statusCodes.BAD_REQUEST).json({
         message: getMessage('validation.validationError'),
@@ -349,24 +376,32 @@ export const clearCart = async (req: Request, res: Response): Promise<Response> 
       });
     }
 
+    // Find the active cart for the user
+    console.log('Fetching active cart for userId:', userId);
     const cart = await Cart.findOne({ where: { userId, status: 'active' }, transaction });
+
     if (!cart) {
+      console.log('No active cart found for userId:', userId);
       await transaction.rollback();
       return res.status(statusCodes.NOT_FOUND).json({
         message: getMessage('cart.notFound'),
       });
     }
 
+    // Clear all items in the cart
+    console.log('Clearing all items in the cart with ID:', cart.id);
     await CartItem.destroy({ where: { cartId: cart.id }, transaction });
-    cart.totalAmount = 0;
-    await cart.save({ transaction });
 
-    // Commit transaction
+    // Remove the cart itself
+    console.log('Removing the cart with ID:', cart.id);
+    await cart.destroy({ transaction });
+
+    // Commit the transaction
+    console.log('Committing transaction for clearing cart with ID:', cart.id);
     await transaction.commit();
 
     return res.status(statusCodes.SUCCESS).json({
       message: getMessage('cart.cleared'),
-      data: cart,
     });
   } catch (error: unknown) {
     await transaction.rollback();
