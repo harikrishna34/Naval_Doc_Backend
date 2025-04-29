@@ -128,3 +128,84 @@ export const placeOrder = async (req: Request, res: Response): Promise<Response>
     });
   }
 };
+
+
+export const listOrders = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    const { userId } = req.user as { userId: string }; // Extract userId from the request
+
+    if (!userId) {
+      return res.status(statusCodes.BAD_REQUEST).json({
+        message: getMessage('validation.validationError'),
+        errors: ['userId is required'],
+      });
+    }
+
+    // Fetch all orders for the user
+    const orders = await Order.findAll({
+      where: { userId },
+      include: [
+        {
+          model: OrderItem,
+          as: 'orderItems',
+        },
+        {
+          model: Payment,
+          as: 'payment',
+        },
+      ],
+      order: [['createdAt', 'DESC']], // Sort by most recent orders
+    });
+
+    if (!orders || orders.length === 0) {
+      return res.status(statusCodes.NOT_FOUND).json({
+        message: getMessage('order.noOrdersFound'),
+      });
+    }
+
+    return res.status(statusCodes.SUCCESS).json({
+      message: getMessage('order.listFetched'),
+      data: orders,
+    });
+  } catch (error: unknown) {
+    logger.error(`Error fetching orders: ${error instanceof Error ? error.message : error}`);
+    return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
+      message: getMessage('error.internalServerError'),
+    });
+  }
+};
+
+export const getAllOrders = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    // Fetch all orders
+    const orders = await Order.findAll({
+      include: [
+        {
+          model: OrderItem,
+          as: 'orderItems',
+        },
+        {
+          model: Payment,
+          as: 'payment',
+        },
+      ],
+      order: [['createdAt', 'DESC']], // Sort by most recent orders
+    });
+
+    if (!orders || orders.length === 0) {
+      return res.status(statusCodes.NOT_FOUND).json({
+        message: getMessage('order.noOrdersFound'),
+      });
+    }
+
+    return res.status(statusCodes.SUCCESS).json({
+      message: getMessage('order.allOrdersFetched'),
+      data: orders,
+    });
+  } catch (error: unknown) {
+    logger.error(`Error fetching all orders: ${error instanceof Error ? error.message : error}`);
+    return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
+      message: getMessage('error.internalServerError'),
+    });
+  }
+};

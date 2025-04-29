@@ -333,8 +333,8 @@ export const getMenusForNextTwoDaysGroupedByDateAndConfiguration = async (req: R
 
 export const getMenuById = async (req: Request, res: Response): Promise<Response> => {
   try {
-    const { id } = req.query; // Get menu ID from route parameters
-    
+    const { id } = req.query; // Get menu ID from query parameters
+
     if (!id) {
       return res.status(statusCodes.BAD_REQUEST).json({
         message: getMessage('validation.validationError'),
@@ -343,11 +343,6 @@ export const getMenuById = async (req: Request, res: Response): Promise<Response
 
     const menu = await Menu.findByPk(id as string, {
       include: [
-        // {
-        //   model: Canteen,
-        //   as: 'canteen', // Include canteen details
-        //   attributes: ['id', 'name', 'location', 'status'], // Include only necessary fields, excluding image
-        // },
         {
           model: MenuConfiguration,
           as: 'menuConfiguration', // Include menu configuration details
@@ -359,6 +354,12 @@ export const getMenuById = async (req: Request, res: Response): Promise<Response
             {
               model: Item,
               as: 'item', // Include item details
+              include: [
+                {
+                  model: Pricing,
+                  as: 'pricing', // Include pricing details
+                },
+              ],
             },
           ],
         },
