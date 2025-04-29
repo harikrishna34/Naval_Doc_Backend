@@ -7,8 +7,8 @@ const router = express.Router();
 // Route to place an order
 router.post('/placeOrder', authenticateToken, placeOrder);
 
-router.post('/getAllOrders', authenticateToken, getAllOrders);
+router.get('/getAllOrders', authenticateToken, getAllOrders);
 
-router.post('/listOrders', authenticateToken, listOrders);
+router.get('/listOrders', authenticateToken, listOrders);
 
 export default router;

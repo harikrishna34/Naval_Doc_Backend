@@ -4,7 +4,7 @@ import {
   updateCartItem,
   removeCartItem,
   getCart,
-  clearCart,
+  clearCart,createCart,placeOrderWithMobile
 } from '../controllers/cartController';
 import authenticateToken from '../middlewares/authMiddleware'; // Import the authentication middleware
 
@@ -21,5 +21,12 @@ router.post('/removeCartItem', authenticateToken, removeCartItem);
 
 // Fix the route for clearing the cart
 router.get('/clearCart', authenticateToken, clearCart);
+
+
+router.get('/createCart', authenticateToken, createCart);
+
+
+router.get('/placeOrderWithMobile', authenticateToken, placeOrderWithMobile);
+
 
 export default router;

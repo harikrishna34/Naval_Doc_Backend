@@ -6,12 +6,17 @@ import CartItem from '../models/cartItem';
 import Cart from '../models/cart';
 import MenuConfiguration from '../models/menuConfiguration';
 import Canteen from '../models/canteen';
+import User from '../models/user';
+import Order from '../models/order';
+import OrderItem from '../models/orderItem';
+import Payment from '../models/payment';
 
 import logger from '../common/logger';
 import { statusCodes } from '../common/statusCodes';
 import { getMessage } from '../common/utils';
 import { Op, Transaction } from 'sequelize';
 import { sequelize } from '../config/database';
+import QRCode from 'qrcode';
 
 /**
  * Add an item to the user's cart with transaction support
@@ -139,6 +144,7 @@ export const addToCart = async (req: Request, res: Response): Promise<Response> 
 /**
  * Update cart item quantity with transaction support
  */
+
 export const updateCartItem = async (req: Request, res: Response): Promise<Response> => {
   const transaction = await sequelize.transaction({ isolationLevel: Transaction.ISOLATION_LEVELS.READ_COMMITTED });
 
@@ -219,6 +225,8 @@ export const updateCartItem = async (req: Request, res: Response): Promise<Respo
 /**
  * Remove item from cart with transaction support
  */
+
+
 export const removeCartItem = async (req: Request, res: Response): Promise<Response> => {
   const transaction = await sequelize.transaction({ isolationLevel: Transaction.ISOLATION_LEVELS.READ_COMMITTED });
 
@@ -297,6 +305,8 @@ export const removeCartItem = async (req: Request, res: Response): Promise<Respo
 /**
  * Get cart content for a user (No transaction needed for read-only operation)
  */
+
+
 export const getCart = async (req: Request, res: Response): Promise<Response> => {
   try {
     const { userId } = req.user as { userId: string }; // Extract userId from the request body
@@ -362,6 +372,9 @@ export const getCart = async (req: Request, res: Response): Promise<Response> =>
 /**
  * Clear cart with transaction support
  */
+
+
+
 export const clearCart = async (req: Request, res: Response): Promise<Response> => {
   const transaction = await sequelize.transaction({ isolationLevel: Transaction.ISOLATION_LEVELS.READ_COMMITTED });
 
@@ -406,6 +419,189 @@ export const clearCart = async (req: Request, res: Response): Promise<Response> 
   } catch (error: unknown) {
     await transaction.rollback();
     logger.error(`Error clearing cart: ${error instanceof Error ? error.message : error}`);
+    return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
+      message: getMessage('error.internalServerError'),
+    });
+  }
+};
+
+export const createCart = async (req: Request, res: Response): Promise<Response> => {
+  const transaction: Transaction = await sequelize.transaction();
+
+  try {
+    const { userId } = req.user as { userId: string };
+    const { items } = req.body;
+
+    if (!userId || !items || items.length === 0) {
+      return res.status(statusCodes.BAD_REQUEST).json({
+        message: getMessage('validation.validationError'),
+        errors: ['User ID and items are required'],
+      });
+    }
+
+    // Create a new cart for the user
+    const cart = await Cart.create(
+      {
+        userId,
+        status: 'active',
+      },
+      { transaction }
+    );
+
+    // Add items to the cart
+    const cartItems = items.map((item: any) => ({
+      cartId: cart.id,
+      itemId: item.itemId,
+      quantity: item.quantity,
+      price: item.price,
+      total: item.quantity * item.price,
+    }));
+    await CartItem.bulkCreate(cartItems, { transaction });
+
+    // Commit the transaction
+    await transaction.commit();
+
+    return res.status(statusCodes.SUCCESS).json({
+      message: getMessage('cart.created'),
+      data: {
+        cartId: cart.id,
+        items: cartItems,
+      },
+    });
+  } catch (error: unknown) {
+    await transaction.rollback();
+    logger.error(`Error creating cart: ${error instanceof Error ? error.message : error}`);
+    return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
+      message: getMessage('error.internalServerError'),
+    });
+  }
+};
+
+export const placeOrderWithMobile = async (req: Request, res: Response): Promise<Response> => {
+  const transaction: Transaction = await sequelize.transaction();
+
+  try {
+    const { cartId, mobileNumber, paymentMethod, transactionId, currency = 'INR' } = req.body;
+
+    if (!cartId || !mobileNumber || !paymentMethod) {
+      return res.status(statusCodes.BAD_REQUEST).json({
+        message: getMessage('validation.validationError'),
+        errors: ['Cart ID, mobile number, and payment method are required'],
+      });
+    }
+
+    // Check if a user exists with the provided mobile number
+    let user = await User.findOne({ where: { mobileNumber }, transaction });
+
+    // If user does not exist, create a new user account
+    if (!user) {
+      user = await User.create(
+        {
+          mobileNumber,
+          name: `Guest_${mobileNumber}`, // Default name for the guest user
+          password: null, // No password for guest accounts
+        },
+        { transaction }
+      );
+    }
+
+    const userId = user.id;
+
+    // Fetch the cart
+    const cart: any = await Cart.findOne({
+      where: { id: cartId, status: 'active' },
+      include: [{ model: CartItem, as: 'cartItems' }],
+      transaction,
+    });
+
+    if (!cart || !cart.cartItems || cart.cartItems.length === 0) {
+      await transaction.rollback();
+      return res.status(statusCodes.NOT_FOUND).json({
+        message: getMessage('cart.empty'),
+      });
+    }
+
+    const amount = cart.cartItems.reduce((sum: number, item: any) => sum + item.total, 0);
+    const gatewayPercentage = 2.5;
+    const gatewayCharges = (amount * gatewayPercentage) / 100;
+    const totalAmount = amount + gatewayCharges;
+
+    // Create the order
+    const order = await Order.create(
+      {
+        userId,
+        totalAmount: amount,
+        status: 'placed',
+        canteenId: null, // Set canteenId if applicable
+        menuConfigurationId: null, // Set menuConfigurationId if applicable
+        createdById: userId,
+      },
+      { transaction }
+    );
+
+    // Generate QR Code
+    const qrCodeData = `${process.env.BASE_URL}/api/order/${order.id}`;
+    const qrCode = await QRCode.toDataURL(qrCodeData);
+
+    // Update the order with the QR code
+    order.qrCode = qrCode;
+    await order.save({ transaction });
+
+    // Create order items
+    const orderItems = cart.cartItems.map((cartItem: any) => ({
+      orderId: order.id,
+      itemId: cartItem.itemId,
+      quantity: cartItem.quantity,
+      price: cartItem.price,
+      total: cartItem.total,
+      createdById: userId,
+    }));
+    await OrderItem.bulkCreate(orderItems, { transaction });
+
+    // Store payment details
+    await Payment.create(
+      {
+        orderId: order.id,
+        userId,
+        paymentMethod,
+        transactionId: transactionId || null,
+        amount,
+        gatewayPercentage,
+        gatewayCharges,
+        totalAmount,
+        currency,
+        status: 'success',
+        createdById: userId,
+      },
+      { transaction }
+    );
+
+    // Clear the cart
+    await CartItem.destroy({ where: { cartId: cart.id }, transaction });
+    await cart.destroy({ transaction });
+
+    // Commit the transaction
+    await transaction.commit();
+
+    return res.status(statusCodes.SUCCESS).json({
+      message: getMessage('order.placed'),
+      data: {
+        order,
+        payment: {
+          paymentMethod,
+          transactionId,
+          amount,
+          gatewayPercentage,
+          gatewayCharges,
+          totalAmount,
+          currency,
+        },
+        qrCode,
+      },
+    });
+  } catch (error: unknown) {
+    await transaction.rollback();
+    logger.error(`Error placing order with mobile: ${error instanceof Error ? error.message : error}`);
     return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
       message: getMessage('error.internalServerError'),
     });
