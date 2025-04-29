@@ -7,6 +7,8 @@ import userRoutes from './routes/userRoutes';
 import itemRoutes from './routes/itemRoutes';
 import menuConfigurationRoutes from './routes/menuConfigurationRoutes';
 import menuRoutes from './routes/menuRoutes';
+import orderRoutes from './routes/orderRoutes';
+
 
 
 
@@ -189,6 +191,9 @@ app.use('/api/menu', menuRoutes);
 app.use('/api/menuconfig', menuConfigurationRoutes);
 
 app.use('/api/cart', cartRoutes);
+
+app.use('/api/order', orderRoutes);
+
 
 
 

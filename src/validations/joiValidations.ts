@@ -18,7 +18,8 @@ export const loginWithMobileValidation = Joi.object({
     }),
 });
 
-// Validation for verifying OTP
+// Validation
+//  for verifying OTP
 export const verifyOtpValidation = Joi.object({
   mobile: Joi.string()
     .pattern(/^[0-9]{10}$/)
