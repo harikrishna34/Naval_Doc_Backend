@@ -425,6 +425,57 @@ export const clearCart = async (req: Request, res: Response): Promise<Response> 
   }
 };
 
+export const createCart = async (req: Request, res: Response): Promise<Response> => {
+  const transaction: Transaction = await sequelize.transaction();
+
+  try {
+    const { userId } = req.user as { userId: string };
+    const { items } = req.body;
+
+    if (!userId || !items || items.length === 0) {
+      return res.status(statusCodes.BAD_REQUEST).json({
+        message: getMessage('validation.validationError'),
+        errors: ['User ID and items are required'],
+      });
+    }
+
+    // Create a new cart for the user
+    const cart = await Cart.create(
+      {
+        userId,
+        status: 'active',
+      },
+      { transaction }
+    );
+
+    // Add items to the cart
+    const cartItems = items.map((item: any) => ({
+      cartId: cart.id,
+      itemId: item.itemId,
+      quantity: item.quantity,
+      price: item.price,
+      total: item.quantity * item.price,
+    }));
+    await CartItem.bulkCreate(cartItems, { transaction });
+
+    // Commit the transaction
+    await transaction.commit();
+
+    return res.status(statusCodes.SUCCESS).json({
+      message: getMessage('cart.created'),
+      data: {
+        cartId: cart.id,
+        items: cartItems,
+      },
+    });
+  } catch (error: unknown) {
+    await transaction.rollback();
+    logger.error(`Error creating cart: ${error instanceof Error ? error.message : error}`);
+    return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
+      message: getMessage('error.internalServerError'),
+    });
+  }
+};
 
 export const placeOrderWithMobile = async (req: Request, res: Response): Promise<Response> => {
   const transaction: Transaction = await sequelize.transaction();
