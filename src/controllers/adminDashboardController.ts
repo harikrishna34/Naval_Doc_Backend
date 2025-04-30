@@ -8,6 +8,7 @@ import Order from '../models/order';
 import Item from '../models/item';
 import Canteen from '../models/canteen';
 import Menu from '../models/menu';
+import { User } from '../models';
 
 export const adminDashboard = async (req: Request, res: Response): Promise<Response> => {
   try {
@@ -49,6 +50,145 @@ export const adminDashboard = async (req: Request, res: Response): Promise<Respo
     });
   } catch (error: unknown) {
     logger.error(`Error fetching admin dashboard data: ${error instanceof Error ? error.message : error}`);
+    return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
+      message: getMessage('error.internalServerError'),
+    });
+  }
+};
+
+export const getTotalMenus = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    const { canteenId } = req.query; // Extract canteenId from query parameters
+
+    const whereCondition = canteenId ? { canteenId } : {}; // Add condition if canteenId is provided
+
+    const totalMenus = await Menu.findAll({
+      where: whereCondition, // Apply the condition to filter by canteenId
+      include: [
+        {
+          model: Canteen, // Include the Canteen model
+          as: 'canteenMenu', // Use the correct alias defined in the association
+          attributes: ['id', 'canteenName'], // Fetch necessary canteen fields
+        },
+      ],
+      attributes: ['id', 'name', 'createdAt', 'updatedAt'], // Fetch necessary menu fields
+    });
+
+    return res.status(statusCodes.SUCCESS).json({
+      message: getMessage('admin.totalMenusFetched'),
+      data: totalMenus,
+    });
+  } catch (error: unknown) {
+    logger.error(`Error fetching total menus: ${error instanceof Error ? error.message : error}`);
+    return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
+      message: getMessage('error.internalServerError'),
+    });
+  }
+};
+
+export const getTotalCanteens = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    const totalCanteens = await Canteen.findAll({
+      attributes: ['id', 'canteenName',  'canteenImage','canteenCode'], // Include the image field
+    });
+
+    // Convert image data to Base64
+    const canteensWithBase64Images = totalCanteens.map((canteen) => {
+      const canteenData = canteen.toJSON();
+      if (canteenData.canteenImage) {
+        canteenData.canteenImage = Buffer.from(canteenData.canteenImage).toString('base64'); // Convert image to Base64
+      }
+      return canteenData;
+    });
+
+    return res.status(statusCodes.SUCCESS).json({
+      message: getMessage('admin.totalCanteensFetched'),
+      data: canteensWithBase64Images,
+    });
+  } catch (error: unknown) {
+    logger.error(`Error fetching total canteens: ${error instanceof Error ? error.message : error}`);
+    return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
+      message: getMessage('error.internalServerError'),
+    });
+  }
+};
+
+export const getTotalItems = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    const totalItems = await Item.findAll({
+      attributes: ['id', 'name', 'description', 'image'], // Include the image field
+    });
+
+    // Convert image data to Base64
+    const itemsWithBase64Images = totalItems.map((item) => {
+      const itemData = item.toJSON();
+      if (itemData.image) {
+        itemData.image = Buffer.from(itemData.image).toString('base64'); // Convert image to Base64
+      }
+      return itemData;
+    });
+
+    return res.status(statusCodes.SUCCESS).json({
+      message: getMessage('admin.totalItemsFetched'),
+      data: itemsWithBase64Images,
+    });
+  } catch (error: unknown) {
+    logger.error(`Error fetching total items: ${error instanceof Error ? error.message : error}`);
+    return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
+      message: getMessage('error.internalServerError'),
+    });
+  }
+};
+
+export const getTotalOrders = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    const { canteenId } = req.query; // Extract canteenId from query parameters
+
+    // Add condition if canteenId is provided
+    const whereCondition: any = { status: 'placed' };
+    if (canteenId) {
+      whereCondition.canteenId = canteenId;
+    }
+
+    const totalOrders = await Order.findAll({
+      where: whereCondition, // Apply the condition to filter by canteenId
+      include: [
+        {
+          model: User, // Include the User model
+          as: 'orderUser', // Use the correct alias defined in the association
+          attributes: ['id', 'firstName', 'lastName', 'email', 'mobile'], // Fetch necessary user fields
+        },
+        {
+          model: Canteen, // Include the Canteen model
+          as: 'orderCanteen', // Use the correct alias defined in the association
+          attributes: ['id', 'canteenName'], // Fetch necessary canteen fields
+        },
+      ],
+      attributes: ['id', 'totalAmount', 'status', 'createdAt', 'updatedAt'], // Fetch necessary order fields
+    });
+
+    return res.status(200).json({
+      message: 'Total orders fetched successfully',
+      data: totalOrders,
+    });
+  } catch (error: unknown) {
+    console.error(`Error fetching total orders: ${error instanceof Error ? error.message : error}`);
+    return res.status(500).json({
+      message: 'Failed to fetch total orders',
+    });
+  }
+};
+
+export const getTotalAmount = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    const totalAmount = await Order.sum('totalAmount', { where: { status: 'placed' } });
+
+    return res.status(statusCodes.SUCCESS).json({
+      message: getMessage('admin.totalAmountFetched'),
+      data: { totalAmount },
+    });
+  } catch (error: unknown) {
+    logger.error(`Error fetching total amount: ${error instanceof Error ? error.message : error}`);
     return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
       message: getMessage('error.internalServerError'),
     });
