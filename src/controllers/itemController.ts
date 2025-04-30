@@ -148,3 +148,21 @@ export const getAllItems = async (req: Request, res: Response): Promise<Response
     });
   }
 };
+
+export const getAllItemsCount = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    // Fetch the total count of items
+    const totalItems = await Item.count();
+
+    logger.info('Total items count fetched successfully');
+    return res.status(statusCodes.SUCCESS).json({
+      message: getMessage('success.itemsCountFetched'),
+      data: { totalItems },
+    });
+  } catch (error: unknown) {
+    logger.error(`Error fetching items count: ${error instanceof Error ? error.message : error}`);
+    return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
+      message: getMessage('error.internalServerError'),
+    });
+  }
+};

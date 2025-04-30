@@ -8,6 +8,8 @@ import itemRoutes from './routes/itemRoutes';
 import menuConfigurationRoutes from './routes/menuConfigurationRoutes';
 import menuRoutes from './routes/menuRoutes';
 import orderRoutes from './routes/orderRoutes';
+import adminDashboardRoutes from './routes/adminDashboardRoutes';
+
 
 
 
@@ -29,6 +31,8 @@ import cartRoutes from './routes/cartRoutes';
 import Pricing from './models/pricing';
 import CartItem from './models/cartItem'; // Import CartItem
 import Cart from './models/cart'; // Import Cart
+
+
 
 
 
@@ -131,12 +135,12 @@ Menu.belongsTo(MenuConfiguration, { foreignKey: 'menuConfigurationId', as: 'menu
 
 
 // Cart associations
-Cart.hasMany(CartItem, { foreignKey: 'cartId', as: 'cartItems' }); // Ensure this association exists
+Cart.hasMany(CartItem, { foreignKey: 'cartId', as: 'cartItems' }); // Alias for Cart -> CartItem
 CartItem.belongsTo(Cart, { foreignKey: 'cartId', as: 'cart' }); // Reverse association
 
 // CartItem associations
-CartItem.belongsTo(Item, { foreignKey: 'itemId', as: 'item' }); // Ensure this association exists
-Item.hasMany(CartItem, { foreignKey: 'itemId', as: 'cartItems' }); // Reverse association
+CartItem.belongsTo(Item, { foreignKey: 'itemId', as: 'item' }); // Alias for CartItem -> Item
+Item.hasMany(CartItem, { foreignKey: 'itemId', as: 'itemCartItems' }); // Updated alias to 'itemCartItems'
 
 
 // Cart associations
@@ -193,6 +197,9 @@ app.use('/api/menuconfig', menuConfigurationRoutes);
 app.use('/api/cart', cartRoutes);
 
 app.use('/api/order', orderRoutes);
+
+ app.use('/api/adminDasboard', adminDashboardRoutes);
+
 
 
 
