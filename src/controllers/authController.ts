@@ -3,7 +3,7 @@ import User from '../models/user';
 import Otp from '../models/otp';
 import Role from '../models/role'; // Import the Role model
 import UserRole from '../models/userRole'; // Import the UserRole model
-import { generateOtp, generateToken, getExpiryTimeInKolkata, getMessage } from '../common/utils';
+import { generateOtp, generateToken, getExpiryTimeInKolkata, getMessage,sendOTPSMS } from '../common/utils';
 import {
   loginWithMobileValidation,
   verifyOtpValidation,
@@ -54,6 +54,8 @@ export const loginWithMobile = async (req: Request, res: Response) => {
     await Otp.create({ mobile, otp, expiresAt }, { transaction });
 
     await transaction.commit(); // Commit the transaction
+
+    sendOTPSMS(mobile,otp)
 
     logger.info(`OTP generated for mobile ${mobile}: ${otp}`);
     res
@@ -163,7 +165,7 @@ export const resendOtp = async (req: Request, res: Response) => {
 
   try {
     const otp = generateOtp(); // Generate a new OTP
-    const expiresAt = getExpiryTimeInKolkata(60); // Set expiry time to 60 seconds from now
+    const expiresAt = getExpiryTimeInKolkata(180); // Set expiry time to 180 seconds from now
 
     const otpRecord = await Otp.findOne({ where: { mobile } });
     if (otpRecord) {
@@ -175,6 +177,7 @@ export const resendOtp = async (req: Request, res: Response) => {
     }
 
     logger.info(`Resent OTP for mobile ${mobile}: ${otp}`); // Log OTP resend
+    sendOTPSMS(mobile,otp)
 
     res
       .status(statusCodes.SUCCESS)
