@@ -4,6 +4,11 @@ import moment from 'moment-timezone';
 import { messages } from './messages';
 import dotenv from 'dotenv';
 import axios from 'axios';
+import User from '../models/user';
+import userRole from '../models/userRole';
+import UserRole from '../models/userRole';
+import Role from '../models/role';
+
 
 
 dotenv.config();
@@ -14,6 +19,37 @@ dotenv.config();
  */
 export const generateOtp = (): string => {
   return crypto.randomInt(100000, 999999).toString(); // 6-digit OTP
+};
+
+export const getCustomerProfile = async (mobile: string): Promise<any> => {
+  try {
+    const user = await User.findOne({
+      where: { mobile },
+      include: [
+        {
+          model: UserRole, // Include the UserRole table
+          as: 'userRoles', // Ensure this matches the alias in the association
+          include: [
+            {
+              model: Role, // Include the Role table
+              as: 'role', // Ensure this matches the alias in the association
+              attributes: ['id', 'name'], // Fetch only necessary fields
+            },
+          ],
+          attributes: ['roleId'], // Fetch only the roleId field from UserRole
+        },
+      ],
+    });
+
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    return user;
+  } catch (error) {
+    console.error('Error fetching customer profile:', error);
+    throw new Error('Failed to fetch customer profile');
+  }
 };
 
 export const generateToken = (payload: object, expiresIn: string = '12h'): string => {
@@ -33,6 +69,8 @@ export const generateToken = (payload: object, expiresIn: string = '12h'): strin
 export const getExpiryTimeInKolkata = (durationInSeconds: number): number => {
   return moment.tz('Asia/Kolkata').add(durationInSeconds, 'seconds').unix();
 };
+
+
 
 /**
  * Get a message in the configured language.
@@ -91,6 +129,7 @@ export const sendOTPSMS = async (mobile: string, OTP: string): Promise<any> => {
     throw new Error('Failed to send OTP SMS');
   }
 };
+
 
 const sendSMS = async (params: any): Promise<any> => {
   try {

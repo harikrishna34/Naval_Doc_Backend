@@ -1,6 +1,7 @@
 import { DataTypes, Model } from 'sequelize';
 import { sequelize } from '../config/database';
 import moment from 'moment';
+import userRole from './userRole';
 
 class User extends Model {
   public id!: number;
@@ -87,5 +88,4 @@ User.init(
     },
   }
 );
-
 export default User;

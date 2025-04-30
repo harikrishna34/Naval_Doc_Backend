@@ -80,11 +80,11 @@ UserRole.init(
 
 
 // Define associations
-Role.hasMany(User, { foreignKey: 'roleId', as: 'users' });
-User.belongsTo(Role, { foreignKey: 'roleId', as: 'role' });
+// Role.hasMany(User, { foreignKey: 'roleId', as: 'users' });
+// User.belongsTo(Role, { foreignKey: 'roleId', as: 'role' });
 
-User.belongsToMany(Role, { through: UserRole, foreignKey: 'userId' });
-Role.belongsToMany(User, { through: UserRole, foreignKey: 'roleId' });
+// User.belongsToMany(Role, { through: UserRole, foreignKey: 'userId' });
+// Role.belongsToMany(User, { through: UserRole, foreignKey: 'roleId' });
 
 // Cart associations
 Cart.hasMany(CartItem, { foreignKey: 'cartId', as: 'cartItems' });

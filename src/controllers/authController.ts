@@ -3,7 +3,7 @@ import User from '../models/user';
 import Otp from '../models/otp';
 import Role from '../models/role'; // Import the Role model
 import UserRole from '../models/userRole'; // Import the UserRole model
-import { generateOtp, generateToken, getExpiryTimeInKolkata, getMessage,sendOTPSMS } from '../common/utils';
+import { generateOtp, generateToken, getExpiryTimeInKolkata, getMessage,sendOTPSMS,getCustomerProfile } from '../common/utils';
 import {
   loginWithMobileValidation,
   verifyOtpValidation,
@@ -75,7 +75,33 @@ export const loginWithMobile = async (req: Request, res: Response) => {
       .json({ message: getMessage('error.internalServerError') });
   }
 };
+const beautifyUser = (user: any) => {
+  if (!user) return null;
 
+  return {
+    id: user.id,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    email: user.email,
+    mobile: user.mobile,
+    canteenId: user.canteenId,
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt,
+    userRoles: user.userRoles.map((userRole: any) => ({
+      id: userRole.id,
+      userId: userRole.userId,
+      roleId: userRole.roleId,
+      createdAt: userRole.createdAt,
+      updatedAt: userRole.updatedAt,
+      role: {
+        id: userRole.role.id,
+        name: userRole.role.name,
+        createdAt: userRole.role.createdAt,
+        updatedAt: userRole.role.updatedAt
+      }
+    }))
+  };
+};
 export const verifyOtp = async (req: Request, res: Response) => {
   const { mobile, otp } = req.body;
 
@@ -116,8 +142,9 @@ export const verifyOtp = async (req: Request, res: Response) => {
     // OTP is valid, delete the OTP record
     await otpRecord.destroy({ transaction });
 
+    
+   const user = await getCustomerProfile(mobile)
     // Fetch the user associated with the mobile number
-    const user = await User.findOne({ where: { mobile }, transaction });
 
     if (!user) {
       logger.error(`User not found for mobile ${mobile}`);
@@ -133,9 +160,11 @@ export const verifyOtp = async (req: Request, res: Response) => {
     await transaction.commit(); // Commit the transaction
 
     logger.info(`OTP verified for mobile ${mobile}, token generated for userId ${user.id}`);
-    res
-      .status(statusCodes.SUCCESS)
-      .json({ message: responseHandler.success.otpVerified.message, token });
+    res.status(statusCodes.SUCCESS).json({
+      message: getMessage('success.otpVerified'),
+      data: beautifyUser(user),
+      token:token
+    });
   } catch (error: unknown) {
     await transaction.rollback(); // Rollback the transaction in case of an error
 
@@ -150,6 +179,14 @@ export const verifyOtp = async (req: Request, res: Response) => {
       .json({ message: responseHandler.error.internalServerError.message });
   }
 };
+
+
+
+// Example usage
+// Uncomment and define 'user' if needed, or remove this block if not required.
+// const user = { /* Define user object here */ };
+// const beautifiedUser = beautifyUser(user);
+// console.log(beautifiedUser);
 
 export const resendOtp = async (req: Request, res: Response) => {
   const { mobile } = req.body;
