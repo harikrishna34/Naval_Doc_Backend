@@ -3,6 +3,8 @@ import jwt from 'jsonwebtoken';
 import moment from 'moment-timezone';
 import { messages } from './messages';
 import dotenv from 'dotenv';
+import axios from 'axios';
+
 
 dotenv.config();
 
@@ -14,7 +16,7 @@ export const generateOtp = (): string => {
   return crypto.randomInt(100000, 999999).toString(); // 6-digit OTP
 };
 
-export const generateToken = (payload: object, expiresIn: string = '1h'): string => {
+export const generateToken = (payload: object, expiresIn: string = '12h'): string => {
   const secret = process.env.JWT_SECRET || 'default_secret_for_dev';
   if (!process.env.JWT_SECRET) {
     console.warn('Warning: JWT_SECRET is not defined. Using fallback secret for development.');
@@ -52,3 +54,55 @@ export const getMessage = (key: string): string => {
 
   return message;
 };
+
+
+
+export const sendOTPSMS = async (mobile: string, OTP: string): Promise<any> => {
+  const template = 'Dear {#var#} Kindly use this otp {#var#} for login to your Application . thank you Wecann';
+
+  // Function to populate the template with dynamic values
+  function populateTemplate(template: string, values: string[]): string {
+    let index = 0;
+    return template.replace(/{#var#}/g, () => values[index++]);
+  }
+
+  // Populate the template with the user's name and OTP
+  const name = 'user'; // Default name for the user
+  const message = populateTemplate(template, [name, OTP]);
+
+  // Example Output: Dear User, kindly use this OTP 123456 for login to your application. Thank you, Wecann.
+
+  const templateid = '1707163101087015490';
+
+  try {
+    const params = {
+      username: 'WECANN',
+      apikey: process.env.SMSAPIKEY, // Use API key from environment variables
+      senderid: 'WECANN',
+      mobile: mobile,
+      message: message,
+      templateid: templateid,
+    };
+
+    // Call the sendSMS function
+    return await sendSMS(params);
+  } catch (error) {
+    console.error('Error sending OTP SMS:', error);
+    throw new Error('Failed to send OTP SMS');
+  }
+};
+
+const sendSMS = async (params: any): Promise<any> => {
+  try {
+    const url = 'http://wecann.in/v3/api.php';
+
+    // Trigger the API using axios
+    const response = await axios.get(url, { params });
+
+    return response.data; // Return the API response
+  } catch (error) {
+    console.error('Error sending SMS:', error);
+    throw new Error('Failed to send SMS');
+  }
+};
+
