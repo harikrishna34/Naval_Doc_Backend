@@ -209,3 +209,29 @@ export const getAllOrders = async (req: Request, res: Response): Promise<Respons
     });
   }
 };
+
+export const getOrdersSummary = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    // Fetch total orders count and total amount
+    
+    const result = await Order.findAll({
+      attributes: [
+        [sequelize.fn('COUNT', sequelize.col('id')), 'totalOrders'], // Count total orders
+        [sequelize.fn('SUM', sequelize.col('totalAmount')), 'totalAmount'], // Sum total amount
+      ],
+      where: { status: 'placed' }, // Filter by status 'placed'
+    });
+
+    const summary = result[0]?.toJSON();
+
+    return res.status(statusCodes.SUCCESS).json({
+      message: getMessage('order.summaryFetched'),
+      data: summary,
+    });
+  } catch (error: unknown) {
+    logger.error(`Error fetching orders summary: ${error instanceof Error ? error.message : error}`);
+    return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
+      message: getMessage('error.internalServerError'),
+    });
+  }
+};
