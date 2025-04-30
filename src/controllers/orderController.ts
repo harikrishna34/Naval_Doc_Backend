@@ -11,6 +11,7 @@ import { statusCodes } from '../common/statusCodes';
 import { Transaction } from 'sequelize';
 import QRCode from 'qrcode'; // Import QRCode library
 import dotenv from 'dotenv';
+import Canteen from '../models/canteen';
 
 
 export const placeOrder = async (req: Request, res: Response): Promise<Response> => {
@@ -213,7 +214,7 @@ export const getAllOrders = async (req: Request, res: Response): Promise<Respons
 export const getOrdersSummary = async (req: Request, res: Response): Promise<Response> => {
   try {
     // Fetch total orders count and total amount
-    
+
     const result = await Order.findAll({
       attributes: [
         [sequelize.fn('COUNT', sequelize.col('id')), 'totalOrders'], // Count total orders
@@ -230,6 +231,38 @@ export const getOrdersSummary = async (req: Request, res: Response): Promise<Res
     });
   } catch (error: unknown) {
     logger.error(`Error fetching orders summary: ${error instanceof Error ? error.message : error}`);
+    return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
+      message: getMessage('error.internalServerError'),
+    });
+  }
+};
+
+export const getOrdersByCanteen = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    // Fetch total orders and total amount grouped by canteen name
+    const result = await Order.findAll({
+      attributes: [
+        [sequelize.col('Canteen.canteenName'), 'canteenName'], // Use the correct column name
+        [sequelize.fn('COUNT', sequelize.col('Order.id')), 'totalOrders'], // Count total orders
+        [sequelize.fn('SUM', sequelize.col('Order.totalAmount')), 'totalAmount'], // Sum total amount
+      ],
+      include: [
+        {
+          model: Canteen, // Ensure the model is correctly imported
+          as: 'Canteen', // Alias must match the association
+          attributes: [], // Exclude additional Canteen attributes
+        },
+      ],
+      group: ['Canteen.canteenName'], // Group by the correct column name
+      where: { status: 'placed' }, // Filter by status 'placed'
+    });
+
+    return res.status(statusCodes.SUCCESS).json({
+      message: getMessage('order.canteenSummaryFetched'),
+      data: result,
+    });
+  } catch (error: unknown) {
+    logger.error(`Error fetching orders by canteen: ${error instanceof Error ? error.message : error}`);
     return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
       message: getMessage('error.internalServerError'),
     });

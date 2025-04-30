@@ -1,5 +1,5 @@
 import express from 'express';
-import { placeOrder ,getAllOrders,listOrders,getOrdersSummary} from '../controllers/orderController';
+import { placeOrder ,getAllOrders,listOrders,getOrdersSummary,getOrdersByCanteen} from '../controllers/orderController';
 import authenticateToken from '../middlewares/authMiddleware'; // Middleware for authentication
 
 const router = express.Router();
@@ -12,6 +12,9 @@ router.get('/getAllOrders', authenticateToken, getAllOrders);
 router.get('/listOrders', authenticateToken, listOrders);
 
 router.get('/ordersSummary',authenticateToken, getOrdersSummary);
+
+router.get('/getOrdersByCanteen',authenticateToken, getOrdersByCanteen);
+
 
 
 export default router;

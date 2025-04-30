@@ -1,6 +1,7 @@
 import { Model, DataTypes } from 'sequelize';
 import { sequelize } from '../config/database';
 import moment from 'moment'; // Import moment for Unix timestamps
+import Canteen from './canteen';
 
 class Order extends Model {
   public id!: number;
@@ -74,5 +75,7 @@ Order.init(
     timestamps: true, // Enable Sequelize timestamps
   }
 );
+
+Order.belongsTo(Canteen, { as: 'Canteen', foreignKey: 'canteenId' });
 
 export default Order;
