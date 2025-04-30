@@ -87,12 +87,12 @@ UserRole.init(
 // Role.belongsToMany(User, { through: UserRole, foreignKey: 'roleId' });
 
 // Cart associations
-Cart.hasMany(CartItem, { foreignKey: 'cartId', as: 'cartItems' });
-CartItem.belongsTo(Cart, { foreignKey: 'cartId' });
+// Cart.hasMany(CartItem, { foreignKey: 'cartId', as: 'cartItems' });
+// CartItem.belongsTo(Cart, { foreignKey: 'cartId' });
 
-// CartItem associations
-CartItem.belongsTo(Item, { foreignKey: 'itemId', as: 'item' });
-Item.hasMany(CartItem, { foreignKey: 'itemId' });
+// // CartItem associations
+// CartItem.belongsTo(Item, { foreignKey: 'itemId', as: 'item' });
+// Item.hasMany(CartItem, { foreignKey: 'itemId' });
 
 // // Pricing associations
 // Item.hasOne(Pricing, { foreignKey: 'itemId', as: 'pricing' }); // Keep this alias

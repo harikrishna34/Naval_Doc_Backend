@@ -31,6 +31,7 @@ import cartRoutes from './routes/cartRoutes';
 import Pricing from './models/pricing';
 import CartItem from './models/cartItem'; // Import CartItem
 import Cart from './models/cart'; // Import Cart
+import Order from './models/order';
 
 
 
@@ -119,32 +120,49 @@ UserRole.init(
   { sequelize, modelName: 'UserRole' }
 );
 
-// Define associations
-User.hasMany(UserRole, { foreignKey: 'userId', as: 'userRoles' });
-UserRole.belongsTo(User, { foreignKey: 'userId', as: 'user' });
-UserRole.belongsTo(Role, { foreignKey: 'roleId', as: 'role' });
-Role.hasMany(UserRole, { foreignKey: 'roleId', as: 'userRoles' });
+// User and Role associations
+User.hasMany(UserRole, { foreignKey: 'userId', as: 'userRoles' }); // Alias for User -> UserRole
+UserRole.belongsTo(User, { foreignKey: 'userId', as: 'user' }); // Reverse association
+UserRole.belongsTo(Role, { foreignKey: 'roleId', as: 'role' }); // Alias for UserRole -> Role
+Role.hasMany(UserRole, { foreignKey: 'roleId', as: 'roleUserRoles' }); // Updated alias to avoid conflicts
 
-Menu.hasMany(MenuItem, { foreignKey: 'menuId', as: 'menuItems' }); // Unique alias for Menu -> MenuItem
+// Menu and MenuItem associations
+Menu.hasMany(MenuItem, { foreignKey: 'menuId', as: 'menuItems' }); // Alias for Menu -> MenuItem
 MenuItem.belongsTo(Menu, { foreignKey: 'menuId', as: 'menu' }); // Reverse association
-MenuItem.belongsTo(Item, { foreignKey: 'itemId', as: 'item' }); // Keep this alias as 'item'
+MenuItem.belongsTo(Item, { foreignKey: 'itemId', as: 'menuItemItem' }); // Updated alias to avoid conflicts
 
-Menu.belongsTo(Canteen, { foreignKey: 'canteenId', as: 'canteen' });
-Menu.belongsTo(MenuConfiguration, { foreignKey: 'menuConfigurationId', as: 'menuConfiguration' });
+// Menu and Canteen/MenuConfiguration associations
+Menu.belongsTo(Canteen, { foreignKey: 'canteenId', as: 'menuCanteen' }); // Updated alias to avoid conflicts
+Menu.belongsTo(MenuConfiguration, { foreignKey: 'menuConfigurationId', as: 'menuMenuConfiguration' }); // Updated alias
 
-
-// Cart associations
+// Cart and CartItem associations
 Cart.hasMany(CartItem, { foreignKey: 'cartId', as: 'cartItems' }); // Alias for Cart -> CartItem
 CartItem.belongsTo(Cart, { foreignKey: 'cartId', as: 'cart' }); // Reverse association
 
-// CartItem associations
-CartItem.belongsTo(Item, { foreignKey: 'itemId', as: 'item' }); // Alias for CartItem -> Item
-Item.hasMany(CartItem, { foreignKey: 'itemId', as: 'itemCartItems' }); // Updated alias to 'itemCartItems'
+// Item and CartItem associations
+Item.hasMany(CartItem, { foreignKey: 'itemId', as: 'itemCartItems' }); // Updated alias to avoid conflicts
+CartItem.belongsTo(Item, { foreignKey: 'itemId', as: 'cartItemItem' }); // Updated alias to avoid conflicts
+
+// Cart and MenuConfiguration/Canteen associations
+Cart.belongsTo(MenuConfiguration, { foreignKey: 'menuConfigurationId', as: 'cartMenuConfiguration' }); // Updated alias
+Cart.belongsTo(Canteen, { foreignKey: 'canteenId', as: 'cartCanteen' }); // Updated alias
+
+// Order and User associations
+// Order.belongsTo(User, { foreignKey: 'userId', as: 'orderUser' }); // Updated alias to avoid conflicts
+// User.hasMany(Order, { foreignKey: 'userId', as: 'userOrders' }); // Updated alias to avoid conflicts
 
 
-// Cart associations
-Cart.belongsTo(MenuConfiguration, { foreignKey: 'menuConfigurationId', as: 'menuConfiguration' });
-Cart.belongsTo(Canteen, { foreignKey: 'canteenId', as: 'canteen' });
+Order.belongsTo(User, { foreignKey: 'userId', as: 'orderUser' }); // Alias for Order -> User
+User.hasMany(Order, { foreignKey: 'userId', as: 'userOrders' }); // Reverse association
+
+// Menu and Canteen association
+Menu.belongsTo(Canteen, { foreignKey: 'canteenId', as: 'canteenMenu' }); // Alias for Menu -> Canteen
+Canteen.hasMany(Menu, { foreignKey: 'canteenId', as: 'canteenMenus' }); // Reverse association
+
+// Order and Canteen association
+Order.belongsTo(Canteen, { foreignKey: 'canteenId', as: 'orderCanteen' }); // Updated alias
+Canteen.hasMany(Order, { foreignKey: 'canteenId', as: 'canteenOrders' }); // Reverse association
+
 sequelize.sync({ force: false }).then(() => {
   console.log('Database synced successfully!');
 });
