@@ -18,9 +18,9 @@ import dotenv from 'dotenv';
 import { DataTypes } from 'sequelize';
 import cors from 'cors';
 import { sequelize } from './config/database'; // Updated import
-import Role from './models/role';
 import User from './models/user';
 import UserRole from './models/userRole';
+import Role from './models/role';
 
 import Menu from './models/menu';
 import MenuItem from './models/menuItem';
@@ -120,11 +120,10 @@ UserRole.init(
 );
 
 // Define associations
-Role.hasMany(User, { foreignKey: 'roleId', as: 'users' });
-User.belongsTo(Role, { foreignKey: 'roleId', as: 'role' });
-
-User.belongsToMany(Role, { through: UserRole, foreignKey: 'userId' });
-Role.belongsToMany(User, { through: UserRole, foreignKey: 'roleId' });
+User.hasMany(UserRole, { foreignKey: 'userId', as: 'userRoles' });
+UserRole.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+UserRole.belongsTo(Role, { foreignKey: 'roleId', as: 'role' });
+Role.hasMany(UserRole, { foreignKey: 'roleId', as: 'userRoles' });
 
 Menu.hasMany(MenuItem, { foreignKey: 'menuId', as: 'menuItems' }); // Unique alias for Menu -> MenuItem
 MenuItem.belongsTo(Menu, { foreignKey: 'menuId', as: 'menu' }); // Reverse association
@@ -146,41 +145,9 @@ Item.hasMany(CartItem, { foreignKey: 'itemId', as: 'itemCartItems' }); // Update
 // Cart associations
 Cart.belongsTo(MenuConfiguration, { foreignKey: 'menuConfigurationId', as: 'menuConfiguration' });
 Cart.belongsTo(Canteen, { foreignKey: 'canteenId', as: 'canteen' });
-sequelize.sync({ force: false }) // Sync all models
-  .then(async () => {
-    console.log('All tables created successfully!');
-
-    // Seed admin account and roles
-    const seedAdminAccount = async () => {
-      try {
-        const [adminRole] = await Role.findOrCreate({ where: { name: 'Admin' } });
-        await Role.findOrCreate({ where: { name: 'User' } });
-
-        const [adminUser] = await User.findOrCreate({
-          where: { email: 'admin@example.com' },
-          defaults: {
-            firstName: 'Admin',
-            lastName: 'User',
-            mobile: '1234567890',
-            canteenId: null,
-          },
-        });
-
-        await UserRole.findOrCreate({
-          where: { userId: adminUser.id, roleId: adminRole.id },
-        });
-
-        console.log('Admin account and roles seeded successfully.');
-      } catch (error) {
-        console.error('Error seeding admin account:', error);
-      }
-    };
-
-    await seedAdminAccount();
-  })
-  .catch((error) => {
-    console.error('Error creating tables:', error);
-  });
+sequelize.sync({ force: false }).then(() => {
+  console.log('Database synced successfully!');
+});
 
 app.use(express.json());
 app.use('/api', authRoutes);
