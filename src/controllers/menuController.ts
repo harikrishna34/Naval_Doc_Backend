@@ -247,7 +247,6 @@ export const getMenusForNextTwoDaysGroupedByDateAndConfiguration = async (req: R
         },
       ],
       order: [['startTime', 'ASC']], // Order by startTime to ensure consistent grouping
-      logging: console.log // Log the SQL query
     });
 
   if(menus.length ===0){
@@ -271,6 +270,7 @@ export const getMenusForNextTwoDaysGroupedByDateAndConfiguration = async (req: R
       
       const menuStartDate = moment.unix(menuData.startTime).startOf('day');
       const menuEndDate = moment.unix(menuData.endTime).endOf('day');
+      menuData.menuConfiguration=menuData.menuMenuConfiguration 
       const menuConfigName = menuData.menuConfiguration?.name || 'Unconfigured';
 
       // Check if menuConfiguration is valid for the current date
