@@ -12,35 +12,59 @@ import { User } from '../models';
 
 export const adminDashboard = async (req: Request, res: Response): Promise<Response> => {
   try {
+
+    console.log(req.params,req.query)
+    const { canteenId } = req.query; // Extract canteenId from query parameters
+
+    // Add condition if canteenId is provided
+    const whereCondition: any = {};
+    if (canteenId) {
+      whereCondition.canteenId = canteenId;
+    }
+
     // Fetch total orders count and total amount
     const ordersSummary = await Order.findAll({
       attributes: [
         [sequelize.fn('COUNT', sequelize.col('id')), 'totalOrders'], // Count total orders
         [sequelize.fn('SUM', sequelize.col('totalAmount')), 'totalAmount'], // Sum total amount
       ],
-      where: { status: 'placed' }, // Filter by status 'placed'
+      where: { ...whereCondition, status: 'placed' }, // Filter by status 'placed' and canteenId if provided
     });
 
     const totalOrders = ordersSummary[0]?.toJSON()?.totalOrders || 0;
     const totalAmount = ordersSummary[0]?.toJSON()?.totalAmount || 0;
 
+    // Fetch completed orders count
+    const completedOrders = await Order.count({
+      where: { ...whereCondition, status: 'completed' }, // Filter by status 'completed' and canteenId if provided
+    });
+
+    // Fetch cancelled orders count
+    const cancelledOrders = await Order.count({
+      where: { ...whereCondition, status: 'cancelled' }, // Filter by status 'cancelled' and canteenId if provided
+    });
+
     // Fetch total items count
+    const totalItems = await Item.count();
 
     // Fetch total canteens count
-   const totalCanteens = await Canteen.count();
+    const totalCanteens = canteenId
+      ? await Canteen.count({ where: { id: canteenId } }) // Count only the specified canteen if canteenId is provided
+      : await Canteen.count();
 
     // Fetch total menus count
-   const totalMenus = await Menu.count(); 
-
-     const totalItems = await Item.count();
-
+    const totalMenus = await Menu.count({
+      where: whereCondition, // Filter by canteenId if provided
+    });
 
     // Combine all data into a single response
     const dashboardSummary = {
       totalOrders,
       totalAmount,
+      completedOrders,
+      cancelledOrders,
       totalItems,
-     totalCanteens,
+      totalCanteens,
       totalMenus,
     };
 
@@ -142,16 +166,21 @@ export const getTotalItems = async (req: Request, res: Response): Promise<Respon
 
 export const getTotalOrders = async (req: Request, res: Response): Promise<Response> => {
   try {
-    const { canteenId } = req.query; // Extract canteenId from query parameters
+    const { canteenId, status } = req.query; // Extract canteenId and status from query parameters
 
-    // Add condition if canteenId is provided
-    const whereCondition: any = { status: 'placed' };
+    // Build the where condition dynamically
+    const whereCondition: any = {};
     if (canteenId) {
-      whereCondition.canteenId = canteenId;
+      whereCondition.canteenId = canteenId; // Filter by canteenId if provided
+    }
+
+    // Add status filter if provided and not 'all'
+    if (status && status !== 'all') {
+      whereCondition.status = status; // Filter by specific status
     }
 
     const totalOrders = await Order.findAll({
-      where: whereCondition, // Apply the condition to filter by canteenId
+      where: whereCondition, // Apply the dynamic where condition
       include: [
         {
           model: User, // Include the User model
@@ -167,11 +196,21 @@ export const getTotalOrders = async (req: Request, res: Response): Promise<Respo
       attributes: ['id', 'totalAmount', 'status', 'createdAt', 'updatedAt'], // Fetch necessary order fields
     });
 
-    return res.status(200).json({
-      message: 'Total orders fetched successfully',
-      data: totalOrders,
-    });
-  } catch (error: unknown) {
+  if(totalOrders && totalOrders.length === 0) 
+    {
+      return res.status(404).json({
+        message: 'NO Orders Found',
+      });
+
+    }else{
+      return res.status(200).json({
+        message: 'Total orders fetched successfully',
+        data: totalOrders,
+      });
+
+    }
+   
+  }catch (error: unknown) {
     console.error(`Error fetching total orders: ${error instanceof Error ? error.message : error}`);
     return res.status(500).json({
       message: 'Failed to fetch total orders',
