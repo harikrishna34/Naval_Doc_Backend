@@ -235,7 +235,7 @@ export const getMenusForNextTwoDaysGroupedByDateAndConfiguration = async (req: R
       include: [
         {
           model: MenuConfiguration,
-          as: 'menuConfiguration',
+          as: 'menuMenuConfiguration',
           attributes: ['id', 'name', 'defaultStartTime', 'defaultEndTime'], // Use defaultStartTime and defaultEndTime
         },
       ],
@@ -340,17 +340,21 @@ export const getMenuById = async (req: Request, res: Response): Promise<Response
   try {
     const { id } = req.query; // Get menu ID from query parameters
 
+    // Validate if the menu ID is provided
     if (!id) {
+      logger.error('Validation error: Menu ID is required');
       return res.status(statusCodes.BAD_REQUEST).json({
         message: getMessage('validation.validationError'),
       });
     }
 
+    // Fetch the menu by ID with related data
     const menu = await Menu.findByPk(id as string, {
       include: [
         {
           model: MenuConfiguration,
-          as: 'menuConfiguration', // Include menu configuration details
+          as: 'menuMenuConfiguration', // Include menu configuration details
+          attributes: ['id', 'name', 'defaultStartTime', 'defaultEndTime'], // Fetch necessary fields
         },
         {
           model: MenuItem,
@@ -358,20 +362,25 @@ export const getMenuById = async (req: Request, res: Response): Promise<Response
           include: [
             {
               model: Item,
-              as: 'item', // Include item details
+              as: 'menuItemItem', // Include item details
+              attributes: ['id', 'name', 'description', 'image'], // Fetch necessary fields
               include: [
                 {
                   model: Pricing,
                   as: 'pricing', // Include pricing details
+                  attributes: ['id', 'price', 'currency'], // Fetch necessary fields
                 },
               ],
             },
           ],
         },
       ],
+      attributes: ['id', 'name', 'description', 'startTime', 'endTime', 'createdAt', 'updatedAt'], // Fetch necessary menu fields
     });
 
+    // If the menu is not found, return a 404 response
     if (!menu) {
+      logger.warn(`Menu with ID ${id} not found`);
       return res.status(statusCodes.NOT_FOUND).json({
         message: getMessage('menu.notFound'),
       });
@@ -380,11 +389,16 @@ export const getMenuById = async (req: Request, res: Response): Promise<Response
     // Convert menu to plain object
     const menuData = menu.toJSON();
 
-    // Convert images to base64 format
+    // Convert item images to Base64 format
     menuData.menuItems = menuData.menuItems.map((menuItem: any) => {
-      if (menuItem.item && menuItem.item.image) {
-        // Convert image to base64
-        menuItem.item.image = Buffer.from(menuItem.item.image).toString('base64');
+      if (menuItem.menuItemItem && menuItem.menuItemItem.image) {
+        try {
+          // Convert image to Base64
+          menuItem.menuItemItem.image = Buffer.from(menuItem.menuItemItem.image).toString('base64');
+        } catch (conversionError) {
+          logger.error(`Error converting image to Base64 for item ID ${menuItem.menuItemItem.id}: ${conversionError}`);
+          menuItem.menuItemItem.image = null; // Set image to null if conversion fails
+        }
       }
       return menuItem;
     });
@@ -394,7 +408,7 @@ export const getMenuById = async (req: Request, res: Response): Promise<Response
       data: menuData,
     });
   } catch (error: unknown) {
-    logger.error(`Error fetching menu by id: ${error instanceof Error ? error.message : error}`);
+    logger.error(`Error fetching menu by ID: ${error instanceof Error ? error.message : error}`);
     return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
       message: getMessage('error.internalServerError'),
     });
