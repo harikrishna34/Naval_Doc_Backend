@@ -396,15 +396,21 @@ export const getMenuById = async (req: Request, res: Response): Promise<Response
     // Convert menu to plain object
     const menuData = menu.toJSON();
 
+    menuData.menuConfiguration=menuData.menuMenuConfiguration
+    delete menuData.menuMenuConfiguration
     // Convert item images to Base64 format
     menuData.menuItems = menuData.menuItems.map((menuItem: any) => {
-      if (menuItem.menuItemItem && menuItem.menuItemItem.image) {
+      menuItem.item=  menuItem.menuItemItem;
+      delete menuItem.menuItemItem;
+
+
+      if (menuItem.item && menuItem.item.image) {
         try {
           // Convert image to Base64
-          menuItem.menuItemItem.image = Buffer.from(menuItem.menuItemItem.image).toString('base64');
+          menuItem.item.image = Buffer.from(menuItem.item.image).toString('base64');
         } catch (conversionError) {
-          logger.error(`Error converting image to Base64 for item ID ${menuItem.menuItemItem.id}: ${conversionError}`);
-          menuItem.menuItemItem.image = null; // Set image to null if conversion fails
+          logger.error(`Error converting image to Base64 for item ID ${menuItem.item.id}: ${conversionError}`);
+          menuItem.item.image = null; // Set image to null if conversion fails
         }
       }
       return menuItem;
