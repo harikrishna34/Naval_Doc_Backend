@@ -32,6 +32,8 @@ import Pricing from './models/pricing';
 import CartItem from './models/cartItem'; // Import CartItem
 import Cart from './models/cart'; // Import Cart
 import Order from './models/order';
+import OrderItem from './models/orderItem';
+import Payment from './models/payment';
 
 
 
@@ -162,6 +164,20 @@ Canteen.hasMany(Menu, { foreignKey: 'canteenId', as: 'canteenMenus' }); // Rever
 // Order and Canteen association
 Order.belongsTo(Canteen, { foreignKey: 'canteenId', as: 'orderCanteen' }); // Updated alias
 Canteen.hasMany(Order, { foreignKey: 'canteenId', as: 'canteenOrders' }); // Reverse association
+
+
+// Order and OrderItem associations
+Order.hasMany(OrderItem, { foreignKey: 'orderId', as: 'orderItems' }); // Alias for Order -> OrderItem
+OrderItem.belongsTo(Order, { foreignKey: 'orderId', as: 'order' }); // Reverse association
+
+
+// Order and Payment associations
+Order.hasOne(Payment, { foreignKey: 'orderId', as: 'payment' }); // Alias for Order -> Payment
+Payment.belongsTo(Order, { foreignKey: 'orderId', as: 'order' }); // Reverse association
+
+// OrderItem and Item associations
+OrderItem.belongsTo(Item, { foreignKey: 'itemId', as: 'menuItemItem' }); // Alias for OrderItem -> Item
+Item.hasMany(OrderItem, { foreignKey: 'itemId', as: 'itemOrderItems' }); // Reverse association
 
 sequelize.sync({ force: false }).then(() => {
   console.log('Database synced successfully!');

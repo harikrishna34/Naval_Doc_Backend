@@ -12,6 +12,7 @@ import { Transaction } from 'sequelize';
 import QRCode from 'qrcode'; // Import QRCode library
 import dotenv from 'dotenv';
 import Canteen from '../models/canteen';
+import Item from '../models/item';
 
 
 export const placeOrder = async (req: Request, res: Response): Promise<Response> => {
@@ -148,11 +149,19 @@ export const listOrders = async (req: Request, res: Response): Promise<Response>
       include: [
         {
           model: OrderItem,
-          as: 'orderItems',
+          as: 'orderItems', // Ensure this matches the alias in the Order -> OrderItem association
+          include: [
+            {
+              model: Item,
+              as: 'menuItemItem', // Ensure this matches the alias in the OrderItem -> Item association
+              attributes: ['id', 'name', 'description', 'image'], // Fetch necessary item fields
+            },
+          ],
         },
         {
           model: Payment,
-          as: 'payment',
+          as: 'payment', // Ensure this matches the alias in the Order -> Payment association
+          attributes: ['id', 'amount', 'status', 'paymentMethod'], // Fetch necessary payment fields
         },
       ],
       order: [['createdAt', 'DESC']], // Sort by most recent orders
@@ -176,6 +185,70 @@ export const listOrders = async (req: Request, res: Response): Promise<Response>
   }
 };
 
+
+export const getOrderById = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    const { id } = req.query as { id: string }; // Extract userId from the request
+    if (!id) {
+      return res.status(statusCodes.BAD_REQUEST).json({
+        message: getMessage('validation.validationError'),
+        errors: ['Order ID is required'],
+      });
+    }
+
+    // Fetch the order by ID
+    const order = await Order.findByPk(id, {
+      include: [
+        {
+          model: OrderItem,
+          as: 'orderItems', // Ensure this matches the alias in the Order -> OrderItem association
+          include: [
+            {
+              model: Item,
+              as: 'menuItemItem', // Ensure this matches the alias in the OrderItem -> Item association
+              attributes: ['id', 'name', 'description', 'image'], // Fetch necessary item fields
+            },
+          ],
+        },
+        {
+          model: Payment,
+          as: 'payment', // Ensure this matches the alias in the Order -> Payment association
+          attributes: ['id', 'amount', 'status', 'paymentMethod'], // Fetch necessary payment fields
+        },
+        {
+          model: Canteen,
+          as: 'orderCanteen', // Ensure this matches the alias in the Order -> Canteen association
+          attributes: ['id', 'canteenName'], // Fetch necessary canteen fields
+        },
+      ],
+    });
+
+    if (!order) {
+      return res.status(statusCodes.NOT_FOUND).json({
+        message: getMessage('order.notFound'),
+      });
+    }
+
+    // Convert item images to Base64
+    const orderData = order.toJSON();
+    orderData.orderItems = orderData.orderItems.map((orderItem: any) => {
+      if (orderItem.menuItemItem && orderItem.menuItemItem.image) {
+        orderItem.menuItemItem.image = Buffer.from(orderItem.menuItemItem.image).toString('base64');
+      }
+      return orderItem;
+    });
+
+    return res.status(statusCodes.SUCCESS).json({
+      message: getMessage('order.fetched'),
+      data: orderData,
+    });
+  } catch (error: unknown) {
+    logger.error(`Error fetching order by ID: ${error instanceof Error ? error.message : error}`);
+    return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
+      message: getMessage('error.internalServerError'),
+    });
+  }
+};
 export const getAllOrders = async (req: Request, res: Response): Promise<Response> => {
   try {
     // Fetch all orders
