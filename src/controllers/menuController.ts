@@ -397,6 +397,9 @@ export const getMenuById = async (req: Request, res: Response): Promise<Response
     const menuData = menu.toJSON();
 
     menuData.menuConfiguration=menuData.menuMenuConfiguration
+
+    menuData.menuConfiguration 
+    menuData.menuConfigurationId=menuData.menuConfiguration.id;
     delete menuData.menuMenuConfiguration
     // Convert item images to Base64 format
     menuData.menuItems = menuData.menuItems.map((menuItem: any) => {
