@@ -160,7 +160,7 @@ export const getAllMenus = async (req: Request, res: Response): Promise<Response
         {
           model: MenuConfiguration,
           as: 'menuMenuConfiguration', // Include menu configuration details
-          attributes: ['id', 'name'], // Fetch necessary menu configuration fields
+          attributes: ['id', 'name', 'defaultStartTime', 'defaultEndTime'], // Fetch necessary menu configuration fields
         },
         {
           model: MenuItem,
@@ -170,6 +170,13 @@ export const getAllMenus = async (req: Request, res: Response): Promise<Response
               model: Item,
               as: 'menuItemItem', // Include item details
               attributes: ['id', 'name', 'description', 'image'], // Fetch necessary item fields
+              include: [
+                {
+                  model: Pricing,
+                  as: 'pricing', // Include pricing details
+                  attributes: ['id', 'price', 'currency'], // Fetch necessary pricing fields
+                },
+              ],
             },
           ],
         },
