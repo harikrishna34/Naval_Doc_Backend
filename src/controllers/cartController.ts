@@ -326,13 +326,13 @@ export const getCart = async (req: Request, res: Response): Promise<Response> =>
           include: [
             {
               model: Item,
-              as: 'item', // Ensure this matches the alias in the CartItem -> Item association
+              as: 'cartItemItem', // Ensure this matches the alias in the CartItem -> Item association
             },
           ],
         },
         {
           model: MenuConfiguration,
-          as: 'menuConfiguration', // Ensure this matches the alias in the Cart -> MenuConfiguration association
+          as: 'cartMenuConfiguration', // Ensure this matches the alias in the Cart -> MenuConfiguration association
           attributes: ['id', 'name'], // Include only the necessary fields
         },
         
@@ -348,11 +348,18 @@ export const getCart = async (req: Request, res: Response): Promise<Response> =>
     // Convert item images to Base64
     const cartData = cart.toJSON();
     cartData.cartItems = cartData.cartItems.map((cartItem: any) => {
+
+      
+      cartItem.item=cartItem.cartItemItem;
+      delete cartItem.cartItemItem;
       if (cartItem.item && cartItem.item.image) {
         cartItem.item.image = Buffer.from(cartItem.item.image).toString('base64');
       }
       return cartItem;
     });
+
+    cartData.MenuConfiguration=cartData.cartMenuConfiguration
+    delete cartData.cartMenuConfiguration
 
     return res.status(statusCodes.SUCCESS).json({
       message: getMessage('cart.fetched'),
