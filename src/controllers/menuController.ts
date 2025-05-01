@@ -141,8 +141,9 @@ export const createMenuWithItems = async (req: Request, res: Response): Promise<
 
 export const getAllMenus = async (req: Request, res: Response): Promise<Response> => {
   try {
-    const { canteenId } = req.query; // Get canteenId from query parameters
+    const { canteenId } = req.query; // Extract canteenId from query parameters
 
+    // Build the where clause dynamically
     const whereClause: any = {};
     if (canteenId) {
       whereClause.canteenId = canteenId; // Filter by canteenId if provided
@@ -153,11 +154,13 @@ export const getAllMenus = async (req: Request, res: Response): Promise<Response
       include: [
         {
           model: Canteen,
-          as: 'canteen', // Include canteen details
+          as: 'canteenMenu', // Include canteen details
+          attributes: ['id', 'canteenName'], // Fetch necessary canteen fields
         },
         {
           model: MenuConfiguration,
-          as: 'menuConfiguration', // Include menu configuration details
+          as: 'menuMenuConfiguration', // Include menu configuration details
+          attributes: ['id', 'name'], // Fetch necessary menu configuration fields
         },
         {
           model: MenuItem,
@@ -165,20 +168,22 @@ export const getAllMenus = async (req: Request, res: Response): Promise<Response
           include: [
             {
               model: Item,
-              as: 'item', // Include item details
+              as: 'menuItemItem', // Include item details
+              attributes: ['id', 'name', 'description', 'image'], // Fetch necessary item fields
             },
           ],
         },
       ],
+      attributes: ['id', 'name', 'createdAt', 'updatedAt'], // Fetch necessary menu fields
     });
 
-    // Convert images to base64 format
+    // Convert item images to Base64 format
     const menusWithBase64Images = menus.map((menu) => {
       const menuData = menu.toJSON();
       menuData.menuItems = menuData.menuItems.map((menuItem: any) => {
-        if (menuItem.item && menuItem.item.image) {
-          // Convert image to base64
-          menuItem.item.image = Buffer.from(menuItem.item.image).toString('base64');
+        if (menuItem.menuItemItem && menuItem.menuItemItem.image) {
+          // Convert image to Base64
+          menuItem.menuItemItem.image = Buffer.from(menuItem.menuItemItem.image).toString('base64');
         }
         return menuItem;
       });
