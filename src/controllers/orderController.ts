@@ -13,6 +13,10 @@ import QRCode from 'qrcode'; // Import QRCode library
 import dotenv from 'dotenv';
 import Canteen from '../models/canteen';
 import Item from '../models/item';
+import axios from 'axios';
+dotenv.config();
+
+
 
 
 export const placeOrder = async (req: Request, res: Response): Promise<Response> => {
@@ -336,6 +340,151 @@ export const getOrdersByCanteen = async (req: Request, res: Response): Promise<R
     });
   } catch (error: unknown) {
     logger.error(`Error fetching orders by canteen: ${error instanceof Error ? error.message : error}`);
+    return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
+      message: getMessage('error.internalServerError'),
+    });
+  }
+};
+
+
+export const processCashfreePayment = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    const { orderId, amount, currency = 'INR', customerName, customerEmail, customerPhone } = req.body;
+
+    // Validate required fields
+    if (!orderId || !amount || !customerName || !customerEmail || !customerPhone) {
+      return res.status(statusCodes.BAD_REQUEST).json({
+        message: getMessage('validation.validationError'),
+        errors: ['orderId, amount, customerName, customerEmail, and customerPhone are required'],
+      });
+    }
+
+    // Cashfree API credentials (ensure these are stored securely in environment variables)
+    const CASHFREE_APP_ID = process.env.pgAppID;
+    const CASHFREE_SECRET_KEY = process.env.pgSecreteKey;
+    const CASHFREE_BASE_URL = process.env.CASHFREE_BASE_URL || 'https://sandbox.cashfree.com/pg'; // Use sandbox for testing
+
+    if (!CASHFREE_APP_ID || !CASHFREE_SECRET_KEY) {
+      return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
+        message: 'Cashfree credentials are not configured',
+      });
+    }
+
+    // Create order payload for Cashfree
+    const payload = {
+      order_id: orderId,
+      order_amount: amount,
+      order_currency: currency,
+      customer_details: {
+        customer_id: "3", // Add customer_id using the userId from the request
+        customer_name: customerName,
+        customer_email: customerEmail,
+        customer_phone: customerPhone,
+      },
+      order_meta: {
+       // payment_methods: ['upi'], // Restrict to UPI only
+        return_url: `${process.env.BASE_URL}/api/order/cashfreecallback?order_id={order_id}`,
+      },
+    };
+
+    // Make API request to Cashfree to create an order
+    const response = await axios.post(`${CASHFREE_BASE_URL}/orders`, payload, {
+      headers: {
+        'Content-Type': 'application/json',
+        'x-client-id': CASHFREE_APP_ID,
+        'x-client-secret': CASHFREE_SECRET_KEY,
+        'x-api-version': '2025-01-01',
+      },
+    });
+
+    // Handle Cashfree response
+    if (response.status === 200 && response.data) {
+      return res.status(statusCodes.SUCCESS).json({
+        message: 'Cashfree order created successfully',
+        data: response.data,
+      });
+    } else {
+      return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
+        message: 'Failed to create Cashfree order',
+        data: response.data,
+      });
+    }
+  } catch (error: unknown) {
+    console.log(error)
+    logger.error(`Error processing Cashfree payment: ${error instanceof Error ? error.message : error}`);
+    return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
+      message: getMessage('error.internalServerError'),
+    });
+  }
+};
+
+export const cashfreeCallback = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    const { order_id, payment_status, payment_amount, payment_currency, transaction_id } = req.body;
+
+    // Validate required fields
+    if (!order_id || !payment_status) {
+      return res.status(statusCodes.BAD_REQUEST).json({
+        message: getMessage('validation.validationError'),
+        errors: ['order_id and payment_status are required'],
+      });
+    }
+
+    // Fetch the order by ID
+    const order = await Order.findOne({ where: { id: order_id } });
+
+    if (!order) {
+      return res.status(statusCodes.NOT_FOUND).json({
+        message: getMessage('order.notFound'),
+      });
+    }
+
+    // Update the order status based on payment status
+    if (payment_status === 'SUCCESS') {
+      order.status = 'completed';
+    } else if (payment_status === 'FAILED') {
+      order.status = 'failed';
+    } else {
+      order.status = 'pending';
+    }
+
+    // Save the updated order
+    await order.save();
+
+    // Check if a payment record already exists for the order
+    const existingPayment = await Payment.findOne({ where: { orderId: order.id } });
+
+    if (existingPayment) {
+      // Update the existing payment record
+      existingPayment.paymentMethod = 'Cashfree';
+      existingPayment.transactionId = transaction_id || existingPayment.transactionId;
+      existingPayment.amount = payment_amount;
+      existingPayment.currency = payment_currency;
+      existingPayment.status = payment_status.toLowerCase();
+      await existingPayment.save();
+    } else {
+      // Create a new payment record
+      await Payment.create({
+        orderId: order.id,
+        userId: order.userId,
+        paymentMethod: 'Cashfree',
+        transactionId: transaction_id || null,
+        amount: payment_amount,
+        currency: payment_currency,
+        status: payment_status.toLowerCase(),
+      });
+    }
+
+    return res.status(statusCodes.SUCCESS).json({
+      message: 'Payment status updated successfully',
+      data: {
+        orderId: order.id,
+        status: order.status,
+        paymentStatus: payment_status,
+      },
+    });
+  } catch (error: unknown) {
+    logger.error(`Error handling Cashfree callback: ${error instanceof Error ? error.message : error}`);
     return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
       message: getMessage('error.internalServerError'),
     });
