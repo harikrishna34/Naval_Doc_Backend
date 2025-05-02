@@ -1,5 +1,5 @@
 import express from 'express';
-import { placeOrder ,getAllOrders,listOrders,getOrdersSummary,getOrdersByCanteen,getOrderById} from '../controllers/orderController';
+import { placeOrder ,getAllOrders,listOrders,getOrdersSummary,getOrdersByCanteen,getOrderById,processCashfreePayment,cashfreeCallback} from '../controllers/orderController';
 import authenticateToken from '../middlewares/authMiddleware'; // Middleware for authentication
 
 const router = express.Router();
@@ -18,6 +18,9 @@ router.get('/ordersSummary',authenticateToken, getOrdersSummary);
 
 router.get('/getOrdersByCanteen',authenticateToken, getOrdersByCanteen);
 
+router.post('/processCashfreePayment', processCashfreePayment);
+
+router.post('/cashfreecallback', cashfreeCallback);
 
 
 export default router;
