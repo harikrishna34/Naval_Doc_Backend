@@ -47,7 +47,7 @@ export const placeOrder = async (req: Request, res: Response): Promise<Response>
     }
 
     const amount = cart.totalAmount;
-    const gatewayPercentage = 2.5;
+    const gatewayPercentage = 0;
     const gatewayCharges = (amount * gatewayPercentage) / 100;
     const totalAmount = amount + gatewayCharges;
 
