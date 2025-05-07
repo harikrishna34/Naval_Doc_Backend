@@ -16,9 +16,6 @@ import Item from '../models/item';
 import axios from 'axios';
 dotenv.config();
 
-
-
-
 export const placeOrder = async (req: Request, res: Response): Promise<Response> => {
   const transaction: Transaction = await sequelize.transaction();
 
@@ -47,7 +44,7 @@ export const placeOrder = async (req: Request, res: Response): Promise<Response>
     }
 
     const amount = cart.totalAmount;
-    const gatewayPercentage = 2.5;
+    const gatewayPercentage = 0;
     const gatewayCharges = (amount * gatewayPercentage) / 100;
     const totalAmount = amount + gatewayCharges;
 
@@ -98,8 +95,7 @@ export const placeOrder = async (req: Request, res: Response): Promise<Response>
         status: 'success',
         createdById: userId, // Set createdById to the userId from the request
         updatedById: userId, // Set createdById to the userId from the request
-
-    },
+      },
       { transaction }
     );
 
@@ -134,7 +130,6 @@ export const placeOrder = async (req: Request, res: Response): Promise<Response>
     });
   }
 };
-
 
 export const listOrders = async (req: Request, res: Response): Promise<Response> => {
   try {
@@ -188,7 +183,6 @@ export const listOrders = async (req: Request, res: Response): Promise<Response>
     });
   }
 };
-
 
 export const getOrderById = async (req: Request, res: Response): Promise<Response> => {
   try {
@@ -253,6 +247,7 @@ export const getOrderById = async (req: Request, res: Response): Promise<Respons
     });
   }
 };
+
 export const getAllOrders = async (req: Request, res: Response): Promise<Response> => {
   try {
     // Fetch all orders
@@ -346,7 +341,6 @@ export const getOrdersByCanteen = async (req: Request, res: Response): Promise<R
   }
 };
 
-
 export const processCashfreePayment = async (req: Request, res: Response): Promise<Response> => {
   try {
     const { orderId, amount, currency = 'INR', customerName, customerEmail, customerPhone } = req.body;
@@ -359,10 +353,16 @@ export const processCashfreePayment = async (req: Request, res: Response): Promi
       });
     }
 
-    // Cashfree API credentials (ensure these are stored securely in environment variables)
-    const CASHFREE_APP_ID = process.env.pgAppID;
+    // Cashfree API credentials
+    const CASHFREE_APP_ID  = process.env.pgAppID;
     const CASHFREE_SECRET_KEY = process.env.pgSecreteKey;
-    const CASHFREE_BASE_URL = process.env.CASHFREE_BASE_URL || 'https://sandbox.cashfree.com/pg'; // Use sandbox for testing
+    const CASHFREE_BASE_URL = process.env.CASHFREE_BASE_URL || 'https://sandbox.cashfree.com/pg';
+
+
+    console.log('CASHFREE_APP_ID', CASHFREE_APP_ID);
+    console.log('CASHFREE_SECRET_KEY', CASHFREE_SECRET_KEY);
+
+    console.log('CASHFREE_BASE_URL', CASHFREE_BASE_URL);
 
     if (!CASHFREE_APP_ID || !CASHFREE_SECRET_KEY) {
       return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
@@ -376,16 +376,22 @@ export const processCashfreePayment = async (req: Request, res: Response): Promi
       order_amount: amount,
       order_currency: currency,
       customer_details: {
-        customer_id: "3", // Add customer_id using the userId from the request
+        customer_id: orderId,
         customer_name: customerName,
         customer_email: customerEmail,
         customer_phone: customerPhone,
       },
       order_meta: {
-       // payment_methods: ['upi'], // Restrict to UPI only
         return_url: `${process.env.BASE_URL}/api/order/cashfreecallback?order_id={order_id}`,
       },
     };
+
+    // Log headers and payload for debugging
+    logger.info('Cashfree Headers:', {
+      clientId: CASHFREE_APP_ID,
+      clientSecret: CASHFREE_SECRET_KEY,
+    });
+    logger.info('Cashfree Payload:', payload);
 
     // Make API request to Cashfree to create an order
     const response = await axios.post(`${CASHFREE_BASE_URL}/orders`, payload, {
@@ -393,15 +399,24 @@ export const processCashfreePayment = async (req: Request, res: Response): Promi
         'Content-Type': 'application/json',
         'x-client-id': CASHFREE_APP_ID,
         'x-client-secret': CASHFREE_SECRET_KEY,
-        'x-api-version': '2025-01-01',
+        'x-api-version': '2023-08-01',
       },
     });
 
     // Handle Cashfree response
     if (response.status === 200 && response.data) {
+      const { cf_order_id, payment_session_id } = response.data;
+
+      // Construct the payment link
+      const paymentLink = `https://sandbox.cashfree.com/pg/orders/${cf_order_id}`;
+
       return res.status(statusCodes.SUCCESS).json({
         message: 'Cashfree order created successfully',
-        data: response.data,
+        data: {
+          orderId,
+          paymentLink,
+          paymentSessionId: payment_session_id,
+        },
       });
     } else {
       return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
@@ -410,7 +425,9 @@ export const processCashfreePayment = async (req: Request, res: Response): Promi
       });
     }
   } catch (error: unknown) {
-    console.log(error)
+    if (axios.isAxiosError(error)) {
+      logger.error('Cashfree Error Response:', error.response?.data);
+    }
     logger.error(`Error processing Cashfree payment: ${error instanceof Error ? error.message : error}`);
     return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
       message: getMessage('error.internalServerError'),
@@ -420,71 +437,207 @@ export const processCashfreePayment = async (req: Request, res: Response): Promi
 
 export const cashfreeCallback = async (req: Request, res: Response): Promise<Response> => {
   try {
-    const { order_id, payment_status, payment_amount, payment_currency, transaction_id } = req.body;
+    // Get parameters from either query params (GET) or request body (POST)
+    const order_id = req.method === 'GET' ? req.query.order_id : req.body.order_id;
+    const payment_status = req.method === 'GET' ? req.query.payment_status : req.body.payment_status;
+    const payment_amount = req.method === 'GET' ? req.query.payment_amount : req.body.payment_amount;
+    const payment_currency = req.method === 'GET' ? req.query.payment_currency : req.body.payment_currency;
+    const transaction_id = req.method === 'GET' ? req.query.transaction_id : req.body.transaction_id;
 
-    // Validate required fields
-    if (!order_id || !payment_status) {
-      return res.status(statusCodes.BAD_REQUEST).json({
-        message: getMessage('validation.validationError'),
-        errors: ['order_id and payment_status are required'],
-      });
-    }
+    console.log(order_id, payment_status, payment_amount, payment_currency, transaction_id);
 
-    // Fetch the order by ID
-    const order = await Order.findOne({ where: { id: order_id } });
-
-    if (!order) {
-      return res.status(statusCodes.NOT_FOUND).json({
-        message: getMessage('order.notFound'),
-      });
-    }
-
-    // Update the order status based on payment status
-    if (payment_status === 'SUCCESS') {
-      order.status = 'completed';
-    } else if (payment_status === 'FAILED') {
-      order.status = 'failed';
-    } else {
-      order.status = 'pending';
-    }
-
-    // Save the updated order
-    await order.save();
-
-    // Check if a payment record already exists for the order
-    const existingPayment = await Payment.findOne({ where: { orderId: order.id } });
-
-    if (existingPayment) {
-      // Update the existing payment record
-      existingPayment.paymentMethod = 'Cashfree';
-      existingPayment.transactionId = transaction_id || existingPayment.transactionId;
-      existingPayment.amount = payment_amount;
-      existingPayment.currency = payment_currency;
-      existingPayment.status = payment_status.toLowerCase();
-      await existingPayment.save();
-    } else {
-      // Create a new payment record
-      await Payment.create({
-        orderId: order.id,
-        userId: order.userId,
-        paymentMethod: 'Cashfree',
-        transactionId: transaction_id || null,
-        amount: payment_amount,
-        currency: payment_currency,
-        status: payment_status.toLowerCase(),
-      });
-    }
-
+    // Return a placeholder response for now
     return res.status(statusCodes.SUCCESS).json({
-      message: 'Payment status updated successfully',
+      message: 'Callback processed successfully',
       data: {
-        orderId: order.id,
-        status: order.status,
-        paymentStatus: payment_status,
+        order_id,
+        payment_status,
+        payment_amount,
+        payment_currency,
+        transaction_id,
       },
     });
   } catch (error: unknown) {
-    logger.error(`Error handling Cashfree callback: ${error instanceof Error ? error.message : error}`);
+    logger.error(`Error processing Cashfree callback: ${error instanceof Error ? error.message : error}`);
+    return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
+      message: getMessage('error.internalServerError'),
+    });
+  }
+};
+
+export const createPaymentLink = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    const { orderId, amount, currency = 'INR', customerName, customerEmail, customerPhone } = req.body;
+
+    // Validate required fields
+    if (!orderId || !amount || !customerName || !customerEmail || !customerPhone) {
+      return res.status(statusCodes.BAD_REQUEST).json({
+        message: getMessage('validation.validationError'),
+        errors: ['orderId, amount, customerName, customerEmail, and customerPhone are required'],
+      });
+    }
+
+    // Cashfree API credentials
+    const CASHFREE_APP_ID = process.env.pgAppID;
+    const CASHFREE_SECRET_KEY = process.env.pgSecreteKey;
+    const CASHFREE_BASE_URL = process.env.CASHFREE_BASE_URL || 'https://sandbox.cashfree.com/pg';
+
+    if (!CASHFREE_APP_ID || !CASHFREE_SECRET_KEY) {
+      return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
+        message: 'Cashfree credentials are not configured',
+      });
+    }
+
+    // Create order payload for Cashfree
+    const payload = {
+      order_id: orderId,
+      order_amount: amount,
+      order_currency: currency,
+      customer_details: {
+        customer_id: orderId, // Use orderId as customer_id for simplicity
+        customer_name: customerName,
+        customer_email: customerEmail,
+        customer_phone: customerPhone,
+      },
+      order_meta: {
+        return_url: `${process.env.BASE_URL}/api/order/cashfreecallback?order_id={order_id}`,
+      },
+    };
+
+    // Log headers and payload for debugging
+    logger.info('Cashfree Headers:', {
+      clientId: CASHFREE_APP_ID,
+      clientSecret: CASHFREE_SECRET_KEY,
+    });
+    logger.info('Cashfree Payload:', payload);
+
+    // Make API request to Cashfree to create an order
+    const response = await axios.post(`${CASHFREE_BASE_URL}/orders`, payload, {
+      headers: {
+        'Content-Type': 'application/json',
+        'x-client-id': CASHFREE_APP_ID,
+        'x-client-secret': CASHFREE_SECRET_KEY,
+        'x-api-version': '2023-08-01',
+      },
+    });
+
+    // Handle Cashfree response
+    if (response.status === 200 && response.data) {
+      const { cf_order_id, payment_session_id } = response.data;
+
+      // Construct the payment link
+      const paymentLink = `${CASHFREE_BASE_URL}/orders/${cf_order_id}`;
+
+      return res.status(statusCodes.SUCCESS).json({
+        message: 'Cashfree payment link created successfully',
+        data: {
+          orderId,
+          paymentLink,
+          paymentSessionId: payment_session_id,
+        },
+      });
+    } else {
+      return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
+        message: 'Failed to create Cashfree payment link',
+        data: response.data,
+      });
+    }
+  } catch (error: unknown) {
+    if (axios.isAxiosError(error)) {
+      logger.error('Cashfree Error Response:', error.response?.data);
+    }
+    logger.error(`Error creating Cashfree payment link: ${error instanceof Error ? error.message : error}`);
+    return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
+      message: getMessage('error.internalServerError'),
+    });
+  }
+};
+
+export const createCashfreePaymentLink = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    const { linkId, amount, currency = 'INR', customerName, customerEmail, customerPhone, description } = req.body;
+
+    // Validate required fields
+    if (!linkId || !amount || !customerName || !customerEmail || !customerPhone) {
+      return res.status(statusCodes.BAD_REQUEST).json({
+        message: getMessage('validation.validationError'),
+        errors: ['linkId, amount, customerName, customerEmail, and customerPhone are required'],
+      });
+    }
+
+    // Cashfree API credentials
+    const CASHFREE_APP_ID = process.env.pgAppID;
+    const CASHFREE_SECRET_KEY = process.env.pgSecreteKey;
+    const CASHFREE_BASE_URL = process.env.CASHFREE_BASE_URL || 'https://sandbox.cashfree.com/pg';
+
+    if (!CASHFREE_APP_ID || !CASHFREE_SECRET_KEY) {
+      return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
+        message: 'Cashfree credentials are not configured',
+      });
+    }
+
+    // Create payload for Cashfree payment link
+    const payload = {
+      link_id: linkId,
+      link_amount: amount,
+      link_currency: currency,
+      customer_details: {
+        customer_name: customerName,
+        customer_email: customerEmail,
+        customer_phone: customerPhone,
+      },
+      link_meta: {
+        return_url: `${process.env.BASE_URL}/api/order/cashfreecallback`,
+        notify_url: `${process.env.BASE_URL}/api/order/cashfreecallback`, // Add notify URL
+      },
+      link_notify: {
+        send_sms: false,
+        send_email: false,
+        payment_received: false,
+      },
+      link_payment_methods: ["upi"], // Restrict payment methods to UPI only
+      link_purpose: description || 'Payment Link',
+    };
+
+    // Log headers and payload for debugging
+    logger.info('Cashfree Headers:', {
+      clientId: CASHFREE_APP_ID,
+      clientSecret: CASHFREE_SECRET_KEY,
+    });
+    logger.info('Cashfree Payload:', payload);
+
+    // Make API request to Cashfree to create a payment link
+    const response = await axios.post(`${CASHFREE_BASE_URL}/links`, payload, {
+      headers: {
+        'Content-Type': 'application/json',
+        'x-client-id': CASHFREE_APP_ID,
+        'x-client-secret': CASHFREE_SECRET_KEY,
+        'x-api-version': '2023-08-01',
+      },
+    });
+
+    // Handle Cashfree response
+    if (response.status === 200 && response.data) {
+      const { link_id, link_url } = response.data;
+
+      return res.status(statusCodes.SUCCESS).json({
+        message: 'Cashfree payment link created successfully',
+        data: {
+          linkId: link_id,
+          paymentLink: link_url,
+        },
+      });
+    } else {
+      return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
+        message: 'Failed to create Cashfree payment link',
+        data: response.data,
+      });
+    }
+  } catch (error: unknown) {
+    if (axios.isAxiosError(error)) {
+      logger.error('Cashfree Error Response:', error.response?.data);
+    }
+    logger.error(`Error creating Cashfree payment link: ${error instanceof Error ? error.message : error}`);
     return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
       message: getMessage('error.internalServerError'),
     });
