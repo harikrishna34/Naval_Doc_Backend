@@ -1,5 +1,5 @@
 import express from 'express';
-import { placeOrder ,getAllOrders,listOrders,getOrdersSummary,getOrdersByCanteen,getOrderById,processCashfreePayment,cashfreeCallback} from '../controllers/orderController';
+import { placeOrder ,getAllOrders,listOrders,getOrdersSummary,getOrdersByCanteen,getOrderById,processCashfreePayment,cashfreeCallback,createPaymentLink,createCashfreePaymentLink} from '../controllers/orderController';
 import authenticateToken from '../middlewares/authMiddleware'; // Middleware for authentication
 
 const router = express.Router();
@@ -20,7 +20,12 @@ router.get('/getOrdersByCanteen',authenticateToken, getOrdersByCanteen);
 
 router.post('/processCashfreePayment', processCashfreePayment);
 
-router.post('/cashfreecallback', cashfreeCallback);
+router.post('/createPaymentLink', createPaymentLink);
 
+router.post('/createCashfreePaymentLink', createCashfreePaymentLink);
+
+// Handle both GET and POST requests for the callback URL
+router.get('/cashfreecallback', cashfreeCallback);
+router.post('/cashfreecallback', cashfreeCallback);
 
 export default router;
