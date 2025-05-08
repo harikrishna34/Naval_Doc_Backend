@@ -256,10 +256,18 @@ export const getAllOrders = async (req: Request, res: Response): Promise<Respons
         {
           model: OrderItem,
           as: 'orderItems',
+          include: [
+            {
+              model: Item,
+              as: 'menuItemItem', // Ensure this matches the alias in the OrderItem -> Item association
+              attributes: ['id', 'name'], // Fetch item name and ID
+            },
+          ],
         },
         {
           model: Payment,
           as: 'payment',
+          attributes: ['id', 'amount', 'status', 'paymentMethod'], // Fetch necessary payment fields
         },
       ],
       order: [['createdAt', 'DESC']], // Sort by most recent orders
