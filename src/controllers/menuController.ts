@@ -75,6 +75,21 @@ export const createMenuWithItems = async (req: Request, res: Response): Promise<
       });
     }
 
+    // Check if a menu with the same canteenId and menuConfigurationId already exists
+    const existingMenu = await Menu.findOne({
+      where: {
+        canteenId,
+        menuConfigurationId,
+      },
+    });
+
+    if (existingMenu) {
+      logger.warn(`Menu with canteenId ${canteenId} and menuConfigurationId ${menuConfigurationId} already exists`);
+      return res.status(statusCodes.CONFLICT).json({
+        message: getMessage('menu.alreadyExists'),
+      });
+    }
+
     // Create a new menu using the provided startTime and endTime
     const menu = await Menu.create(
       {

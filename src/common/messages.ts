@@ -24,6 +24,13 @@ export const messages = {
       canteenCodeExists: 'Canteen with this code already exists',
       noCanteensFound: 'No canteens found',
     },
+    menu: {
+      nameRequired: 'Canteen name is required',
+      codeRequired: 'Canteen code is required',
+      contactRequired: 'Canteen contact is required',
+      alreadyExists: 'Menu already Exists',
+      noCanteensFound: 'No canteens found',
+    },
     item: {
       itemNameExists: 'Item Already exists',
       noCanteensFound: 'No canteens found',
