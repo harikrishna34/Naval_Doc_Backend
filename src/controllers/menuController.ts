@@ -8,7 +8,7 @@ import logger from '../common/logger';
 import { getMessage } from '../common/utils';
 import { statusCodes } from '../common/statusCodes';
 import moment from 'moment-timezone';
-moment.tz.setDefault('Asia/Kolkata');
+moment.tz.setDefault('Kolkata');
 
 
 import Menu from '../models/menu';

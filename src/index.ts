@@ -179,6 +179,15 @@ Payment.belongsTo(Order, { foreignKey: 'orderId', as: 'order' }); // Reverse ass
 OrderItem.belongsTo(Item, { foreignKey: 'itemId', as: 'menuItemItem' }); // Alias for OrderItem -> Item
 Item.hasMany(OrderItem, { foreignKey: 'itemId', as: 'itemOrderItems' }); // Reverse association
 
+
+CartItem.belongsTo(MenuItem, { as: 'menuItem', foreignKey: 'itemId' });
+
+
+// Associate Item with Pricing
+Item.hasOne(Pricing, { foreignKey: 'itemId', as: 'itemPricing' }); // Associate Item with Pricing
+Pricing.belongsTo(Item, { foreignKey: 'itemId', as: 'pricingItem' }); // Updated alias to avoid conflict
+
+
 sequelize.sync({ force: false }).then(() => {
   console.log('Database synced successfully!');
 });
