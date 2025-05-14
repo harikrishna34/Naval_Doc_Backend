@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import bodyParser from 'body-parser';
 
 import authRoutes from './routes/authRoutes';
@@ -34,6 +34,27 @@ import Cart from './models/cart'; // Import Cart
 import Order from './models/order';
 import OrderItem from './models/orderItem';
 import Payment from './models/payment';
+import axios from 'axios';
+
+import { v4 as uuidv4 } from 'uuid';
+
+import crypto from 'crypto';
+
+const AIRTEL_USERNAME = 'your_username'; // Replace with your HMAC username
+const AIRTEL_SECRET = 'your_secret';     // Replace with your HMAC secret key
+function getGMTDate(): string {
+  return new Date().toUTCString();
+}
+function generateHMACAuth(body: any, date: string): string {
+  const content = JSON.stringify(body);
+  const hmac = crypto
+    .createHmac('sha256', AIRTEL_SECRET)
+    .update(content + date)
+    .digest('base64');
+
+  return `HMAC ${AIRTEL_USERNAME}:${hmac}`;
+}
+
 
 
 
@@ -213,6 +234,98 @@ app.use('/api/order', orderRoutes);
 
 
 
+ const AIRTEL_API_URL = process.env.AIRTEL_API_URL!;
+const AIRTEL_TOKEN = process.env.AIRTEL_TOKEN!;
+const FROM_NUMBER = process.env.FROM_NUMBER!; // Airtel-registered number
+
+
+
+interface UserSession {
+  items: string[];
+  confirmed: boolean;
+}
+
+
+// 🔄 Webhook to receive incoming messages from Airtel
+const sessions: Record<string, { items: string[]; confirmed: boolean }> = {};
+
+const MENU = {
+  '1': { name: 'Pizza', price: 199 },
+  '2': { name: 'Burger', price: 99 },
+  '3': { name: 'Pasta', price: 149 },
+};
+
+app.post('/webhook', async (req: Request, res: Response) => {
+  const message = req.body?.message?.text;
+  const from = req.body?.message?.from;
+
+  console.log('Received message:', message, 'from:', from);
+
+  if (!message || !from) {
+    return res.sendStatus(200);
+  }
+
+  const text = message.trim().toLowerCase();
+
+  if (!sessions[from]) {
+    sessions[from] = { items: [], confirmed: false };
+  }
+
+  const session = sessions[from];
+  let reply = '';
+
+  if (text === 'hi' || text === 'hello') {
+    reply = '👋 Welcome to FoodieBot! Here\'s our menu:\n';
+    for (const [key, item] of Object.entries(MENU)) {
+      reply += `${key}. ${item.name} - ₹${item.price}\n`;
+    }
+    reply += '\nReply with item numbers to order (e.g., 1,2)';
+  } else if (/^\d+(,\d+)*$/.test(text)) {
+    session.items = text.split(',').map((id: string) => id.trim());
+    const itemNames = session.items.map(id => MENU[id as keyof typeof MENU]?.name || '❓').join(', ');
+    reply = `✅ You selected: ${itemNames}\nReply YES to confirm your order.`;
+  } else if (text === 'yes' && session.items.length > 0 && !session.confirmed) {
+    session.confirmed = true;
+    reply = '🎉 Order placed! Please share your delivery address.';
+  } else if (session.confirmed && session.items.length > 0) {
+    reply = `📦 Thanks! Your order will be delivered to:\n${text}\nEnjoy your meal! 🍽️`;
+    delete sessions[from];
+  } else {
+    reply = "❓ I didn't understand that. Please type 'Hi' to see the menu.";
+  }
+
+  // 📨 Send reply via Airtel API
+  try {
+    await axios.post(
+      AIRTEL_API_URL,
+      {
+        sessionId: generateUuid(), // or reuse session ID if required
+        to: from,
+        from: FROM_NUMBER,
+        message: {
+          text: reply,
+        },
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${AIRTEL_TOKEN}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+    console.log(`📤 Reply sent to ${from}`);
+  } catch (err: any) {
+    console.error('❌ Error sending reply via Airtel:', err);
+    if (err.response) {
+      console.error('Response data:', err.response.data);
+      console.error('Response status:', err.response.status);
+      console.error('Response headers:', err.response.headers);
+    }
+  }
+
+  res.sendStatus(200);
+});
+
 
 
 
@@ -224,3 +337,7 @@ app.use('/api/order', orderRoutes);
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
 });
+
+function generateUuid(): string {
+  return uuidv4();
+}
