@@ -52,6 +52,37 @@ export const getCustomerProfile = async (mobile: string): Promise<any> => {
   }
 };
 
+export const getCustomerDetails = async (userId: number): Promise<any> => {
+  try {
+    const user = await User.findOne({
+      where: { id:userId },
+      include: [
+        {
+          model: UserRole, // Include the UserRole table
+          as: 'userRoles', // Ensure this matches the alias in the association
+          include: [
+            {
+              model: Role, // Include the Role table
+              as: 'role', // Ensure this matches the alias in the association
+              attributes: ['id', 'name'], // Fetch only necessary fields
+            },
+          ],
+          attributes: ['roleId'], // Fetch only the roleId field from UserRole
+        },
+      ],
+    });
+
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    return user;
+  } catch (error) {
+    console.error('Error fetching customer profile:', error);
+    throw new Error('Failed to fetch customer profile');
+  }
+};
+
 export const generateToken = (payload: object, expiresIn: string = '12h'): string => {
   const secret = process.env.JWT_SECRET || 'default_secret_for_dev';
   if (!process.env.JWT_SECRET) {
@@ -60,6 +91,9 @@ export const generateToken = (payload: object, expiresIn: string = '12h'): strin
 
   return jwt.sign(payload, secret, { expiresIn } as jwt.SignOptions);
 };
+
+
+
 
 /**
  * Get the expiry time in Unix timestamp for a given duration in seconds.
@@ -142,6 +176,85 @@ const sendSMS = async (params: any): Promise<any> => {
   } catch (error) {
     console.error('Error sending SMS:', error);
     throw new Error('Failed to send SMS');
+  }
+};
+
+export const PaymentLink = async (order:any,payment:any,user:any): Promise<Response> => {
+  try {
+    // Cashfree API credentials
+    const CASHFREE_APP_ID = process.env.pgAppID;
+    const CASHFREE_SECRET_KEY = process.env.pgSecreteKey;
+    const CASHFREE_BASE_URL = process.env.CASHFREE_BASE_URL || 'https://sandbox.cashfree.com/pg';
+
+    // Create order payload for Cashfree
+
+
+
+    let linkId = "testcash_link_";
+    linkId=linkId.concat(payment.id);
+    const payload = {
+      link_id: linkId,
+      link_amount: payment.totalAmount, 
+      link_currency: payment.currency,
+      customer_details: {
+        customer_name: user.firstName + " " + user.lastName,
+        customer_email: user.email,
+        customer_phone: user.mobile,
+      },
+      link_meta: {
+        return_url: `${process.env.BASE_URL}/api/order/cashfreecallback?link_id=${linkId}`, // Include linkId in return_url
+        notify_url: `${process.env.BASE_URL}/api/order/cashfreecallback`, // Add notify URL
+      },
+      link_notify: {
+        send_sms: false,
+        send_email: false,
+        payment_received: false,
+      },
+      link_payment_methods: ["upi"], // Restrict payment methods to UPI only
+      link_purpose: "Payment",
+    }; 
+
+
+    // const payload = {
+    //   order_id: order.orderId,
+    //   order_amount: order.amount,
+    //   order_currency: payment.currency,
+    //   customer_details: {
+    //     customer_id: order.userId, // Use orderId as customer_id for simplicity
+    //     customer_name: user.firstName + " " + user.lastName,
+    //     customer_email: user.email,
+    //     customer_phone: user.phoneNumber,
+    //   },
+    //   order_meta: {
+    //     return_url: `${process.env.BASE_URL}/api/order/cashfreecallback?order_id={order_id}`,
+    //   },
+    // };
+
+    // Make API request to Cashfree to create an order
+    const response = await axios.post(`${CASHFREE_BASE_URL}/links`, payload, {
+      headers: {
+        'Content-Type': 'application/json',
+        'x-client-id': CASHFREE_APP_ID,
+        'x-client-secret': CASHFREE_SECRET_KEY,
+        'x-api-version': '2023-08-01',
+      },
+    });
+
+    // Handle Cashfree response
+    if (response.status === 200 && response.data) {
+      const { link_id, link_url } = response.data;
+
+      // Construct the payment link
+      const paymentLink = link_url;
+      // Return the payment link as a response
+      return paymentLink;
+    } else {
+      // Return an error response if the API call fails
+      return new Response('Failed to create payment link', { status: 400 });
+    }
+  } catch (error: unknown) {
+    console.error('Error creating payment link:', error);
+    return new Response('Failed to create payment link', { status: 500 });
   }
 };
 

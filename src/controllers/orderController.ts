@@ -14,13 +14,16 @@ import dotenv from 'dotenv';
 import Canteen from '../models/canteen';
 import Item from '../models/item';
 import axios from 'axios';
+import { PaymentLink } from '../common/utils';
+
 dotenv.config();
 
 export const placeOrder = async (req: Request, res: Response): Promise<Response> => {
   const transaction: Transaction = await sequelize.transaction();
 
   try {
-    const { userId } = req.user as { userId: string };
+    const { userId } = req.user as unknown as { userId: string };
+
     const { paymentMethod, transactionId, currency = 'INR' } = req.body;
 
     if (!userId || !paymentMethod) {
@@ -57,6 +60,7 @@ export const placeOrder = async (req: Request, res: Response): Promise<Response>
         canteenId: cart.canteenId,
         menuConfigurationId: cart.menuConfigurationId,
         createdById: userId, // Set createdById to the userId from the request
+        orderDate: cart.orderDate,
       },
       { transaction }
     );
@@ -81,7 +85,14 @@ export const placeOrder = async (req: Request, res: Response): Promise<Response>
     await OrderItem.bulkCreate(orderItems, { transaction });
 
     // Store payment details
-    await Payment.create(
+    let status = 'success';
+    if (paymentMethod === 'cash') {
+      status = 'success';
+    } else {
+      status = 'pending';
+    }
+
+    const payment = await Payment.create(
       {
         orderId: order.id,
         userId,
@@ -92,12 +103,19 @@ export const placeOrder = async (req: Request, res: Response): Promise<Response>
         gatewayCharges,
         totalAmount,
         currency,
-        status: 'success',
+        status: status,
         createdById: userId, // Set createdById to the userId from the request
         updatedById: userId, // Set createdById to the userId from the request
       },
       { transaction }
     );
+    let linkresonse;
+    if (paymentMethod === 'cash') {
+    } else {
+      linkresonse = await PaymentLink(order, payment, req.user);
+    }
+
+    // Update the cart status to 'completed'
 
     // Clear the cart
     await CartItem.destroy({ where: { cartId: cart.id }, transaction });
@@ -120,6 +138,7 @@ export const placeOrder = async (req: Request, res: Response): Promise<Response>
           currency,
         },
         qrCode, // Include the QR code in the response
+        paymentlink: linkresonse,
       },
     });
   } catch (error: unknown) {
@@ -133,7 +152,7 @@ export const placeOrder = async (req: Request, res: Response): Promise<Response>
 
 export const listOrders = async (req: Request, res: Response): Promise<Response> => {
   try {
-    const { userId } = req.user as { userId: string }; // Extract userId from the request
+    const { userId } = req.user as unknown as { userId: string }; // Extract userId from the request
 
     if (!userId) {
       return res.status(statusCodes.BAD_REQUEST).json({
@@ -362,10 +381,9 @@ export const processCashfreePayment = async (req: Request, res: Response): Promi
     }
 
     // Cashfree API credentials
-    const CASHFREE_APP_ID  = process.env.pgAppID;
+    const CASHFREE_APP_ID = process.env.pgAppID;
     const CASHFREE_SECRET_KEY = process.env.pgSecreteKey;
     const CASHFREE_BASE_URL = process.env.CASHFREE_BASE_URL || 'https://sandbox.cashfree.com/pg';
-
 
     console.log('CASHFREE_APP_ID', CASHFREE_APP_ID);
     console.log('CASHFREE_SECRET_KEY', CASHFREE_SECRET_KEY);
@@ -648,6 +666,84 @@ export const createCashfreePaymentLink = async (req: Request, res: Response): Pr
     logger.error(`Error creating Cashfree payment link: ${error instanceof Error ? error.message : error}`);
     return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
       message: getMessage('error.internalServerError'),
+    });
+  }
+};
+
+export const CashfreePaymentLinkDetails = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    const { linkId } = req.body; // Extract linkId from the request body
+
+    if (!linkId) {
+      return res.status(400).json({
+        message: 'linkId is required to fetch payment details.',
+      });
+    }
+
+    // Extract the numeric part from the linkId
+    const numericPart = linkId.split('_').pop(); // Extracts the part after the last underscore
+    if (!numericPart || isNaN(Number(numericPart))) {
+      return res.status(400).json({
+        message: 'Invalid linkId format. Expected format: testcash_link_<number>',
+      });
+    }
+
+    console.log('Extracted numeric part:', numericPart); // For debugging
+
+    // Fetch the payment record from the database using the numericPart
+    const payment = await Payment.findOne({
+      where: { id: numericPart }, // Assuming `id` is the primary key in the Payment table
+    });
+
+    if (!payment) {
+      return res.status(404).json({
+        message: `No payment record found for numericPart: ${numericPart}`,
+      });
+    }
+
+    // Cashfree API credentials
+    const CASHFREE_APP_ID = process.env.pgAppID;
+    const CASHFREE_SECRET_KEY = process.env.pgSecreteKey;
+    const CASHFREE_BASE_URL = process.env.CASHFREE_BASE_URL || 'https://sandbox.cashfree.com/pg';
+
+    // Make an API call to Cashfree to fetch payment details using the linkId
+    const response = await axios.get(`${CASHFREE_BASE_URL}/links/${linkId}`, {
+      headers: {
+        'Content-Type': 'application/json',
+        'x-client-id': CASHFREE_APP_ID,
+        'x-client-secret': CASHFREE_SECRET_KEY,
+        'x-api-version': '2023-08-01',
+      },
+    });
+
+    // Handle Cashfree response
+    if (response.status === 200 && response.data) {
+      const paymentDetails = response.data;
+
+      // Update the payment record in the database
+      payment.status = paymentDetails.link_status === 'PAID' ? 'success' : 'pending';
+      payment.transactionId = paymentDetails.transaction_id || payment.transactionId;
+      await payment.update({ updatedAt: new Date() }); // Update the timestamp
+
+      // Return the updated payment details as a response
+      return res.status(200).json({
+        message: 'Payment details updated successfully.',
+        data: {
+          payment,
+          cashfreeDetails: paymentDetails,
+        },
+      });
+    } else {
+      // Handle cases where the API call fails
+      return res.status(400).json({
+        message: 'Failed to fetch payment details from Cashfree.',
+        error: response.data,
+      });
+    }
+  } catch (error: unknown) {
+    console.error('Error fetching or updating payment details from Cashfree:', error);
+    return res.status(500).json({
+      message: 'An error occurred while fetching or updating payment details from Cashfree.',
     });
   }
 };

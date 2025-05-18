@@ -13,6 +13,7 @@ import { sequelize } from '../config/database'; // Import sequelize for transact
 import { responseHandler } from '../common/responseHandler';
 import { statusCodes } from '../common/statusCodes';
 import logger from '../common/logger';
+import { Op } from 'sequelize'; // Import Op for query operators
 
 export const loginWithMobile = async (req: Request, res: Response) => {
   const { mobile } = req.body;
@@ -228,5 +229,102 @@ export const resendOtp = async (req: Request, res: Response) => {
     res
       .status(statusCodes.INTERNAL_SERVER_ERROR)
       .json({ message: responseHandler.error.internalServerError.message });
+  }
+};
+
+// Fetch user profile
+export const getProfile = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    const { userId } = req.user as { userId: number }; // Extract userId from the authenticated request
+
+    // Fetch the user details from the database
+    const user = await User.findOne({
+      where: { id: userId },
+      include: [
+        {
+          model: UserRole,
+          as: 'userRoles',
+          include: [{ model: Role, as: 'role' }],
+        },
+      ],
+    });
+
+    if (!user) {
+      return res.status(statusCodes.NOT_FOUND).json({
+        message: getMessage('user.notFound'),
+      });
+    }
+
+    // Return the beautified user profile
+    return res.status(statusCodes.SUCCESS).json({
+      message: getMessage('success.profileFetched'),
+      data: beautifyUser(user),
+    });
+  } catch (error: unknown) {
+    logger.error(`Error fetching profile: ${error instanceof Error ? error.message : error}`);
+    return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
+      message: getMessage('error.internalServerError'),
+    });
+  }
+};
+
+// Update user profile
+export const updateProfile = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    const { userId } = req.user as { userId: number }; // Extract userId from the authenticated request
+    const { firstName, lastName, email, mobile } = req.body; // Extract fields to update
+
+    // Fetch the user from the database
+    const user = await User.findOne({ where: { id: userId } });
+
+    if (!user) {
+      return res.status(statusCodes.NOT_FOUND).json({
+        message: getMessage('user.notFound'),
+      });
+    }
+
+    // Check if the email already exists for another user
+    if (email) {
+      const existingEmailUser = await User.findOne({
+        where: { email, id: { [Op.ne]: userId } }, // Exclude the current user
+      });
+      if (existingEmailUser) {
+        return res.status(statusCodes.BAD_REQUEST).json({
+          message: getMessage('validation.emailAlreadyExists'),
+        });
+      }
+    }
+
+    // Check if the mobile number already exists for another user
+    if (mobile) {
+      const existingMobileUser = await User.findOne({
+        where: { mobile, id: { [Op.ne]: userId } }, // Exclude the current user
+      });
+      if (existingMobileUser) {
+        return res.status(statusCodes.BAD_REQUEST).json({
+          message: getMessage('validation.mobileAlreadyExists'),
+        });
+      }
+    }
+
+    // Update the user's profile
+    user.firstName = firstName || user.firstName;
+    user.lastName = lastName || user.lastName;
+    user.email = email || user.email;
+    user.mobile = mobile || user.mobile;
+    await user.save();
+
+    logger.info(`User profile updated for userId ${userId}`);
+
+    // Return the updated profile
+    return res.status(statusCodes.SUCCESS).json({
+      message: getMessage('success.profileUpdated'),
+      data: beautifyUser(user),
+    });
+  } catch (error: unknown) {
+    logger.error(`Error updating profile: ${error instanceof Error ? error.message : error}`);
+    return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
+      message: getMessage('error.internalServerError'),
+    });
   }
 };

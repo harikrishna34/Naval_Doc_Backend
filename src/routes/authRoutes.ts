@@ -1,5 +1,6 @@
 import express from 'express';
-import { loginWithMobile,verifyOtp,resendOtp } from '../controllers/authController';
+import { loginWithMobile,verifyOtp,resendOtp,getProfile,updateProfile } from '../controllers/authController';
+import authenticateToken from '../middlewares/authMiddleware';
 
 const router = express.Router();
 
@@ -11,6 +12,11 @@ router.post('/login', asyncHandler(loginWithMobile));
 router.post('/verifyOtp', asyncHandler(verifyOtp));
 
 router.post('/resendOtp', asyncHandler(resendOtp));
+
+router.get('/getProfile', authenticateToken, getProfile);
+
+// Route to update user profile
+router.put('/updateProfile', authenticateToken, updateProfile);
 
 
 

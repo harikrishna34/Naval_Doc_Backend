@@ -8,7 +8,7 @@ import logger from '../common/logger';
 import { getMessage } from '../common/utils';
 import { statusCodes } from '../common/statusCodes';
 import moment from 'moment-timezone';
-moment.tz.setDefault('Asia/Kolkata');
+moment.tz.setDefault('Kolkata');
 
 
 import Menu from '../models/menu';
@@ -72,6 +72,21 @@ export const createMenuWithItems = async (req: Request, res: Response): Promise<
       logger.warn(`Menu configuration with ID ${menuConfigurationId} not found`);
       return res.status(statusCodes.NOT_FOUND).json({
         message: getMessage('menuConfiguration.notFound'),
+      });
+    }
+
+    // Check if a menu with the same canteenId and menuConfigurationId already exists
+    const existingMenu = await Menu.findOne({
+      where: {
+        canteenId,
+        menuConfigurationId,
+      },
+    });
+
+    if (existingMenu) {
+      logger.warn(`Menu with canteenId ${canteenId} and menuConfigurationId ${menuConfigurationId} already exists`);
+      return res.status(statusCodes.CONFLICT).json({
+        message: getMessage('menu.alreadyExists'),
       });
     }
 
@@ -219,12 +234,14 @@ export const getMenusForNextTwoDaysGroupedByDateAndConfiguration = async (req: R
     const dayAfterTomorrow = moment().add(2, 'days').startOf('day');
 
     const todayUnix = today.unix(); // Start of today as Unix timestamp
-    const dayAfterTomorrowUnix = moment().add(2, 'days').endOf('day').unix(); // End of the day after tomorrow as Unix timestamp
+    const dayAfterTomorrowUnix = moment().add(1, 'days').endOf('day').unix(); // End of the day after tomorrow as Unix timestamp
+
+    const tomorrowUnix = tomorrow.endOf('day').unix(); // End of tomorrow as Unix timestamp
 
     // Construct where clause to fetch menus valid from today to dayAfterTomorrow
     const whereClause: any = {
       startTime: {
-        [Op.lte]: dayAfterTomorrowUnix, // Menus that start on or before dayAfterTomorrow
+        [Op.lte]: tomorrowUnix, // Menus that start on or before dayAfterTomorrow
       },
       endTime: {
         [Op.gte]: todayUnix, // Menus that end on or after today
@@ -261,7 +278,7 @@ export const getMenusForNextTwoDaysGroupedByDateAndConfiguration = async (req: R
     const groupedMenus: Record<string, Record<string, any[]>> = {
       [today.format('DD-MM-YYYY')]: {},
       [tomorrow.format('DD-MM-YYYY')]: {},
-      [dayAfterTomorrow.format('DD-MM-YYYY')]: {},
+    //  [dayAfterTomorrow.format('DD-MM-YYYY')]: {},
     };
 
     // Iterate over each menu and check if its date range overlaps with the grouped dates

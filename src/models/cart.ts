@@ -42,6 +42,10 @@ Cart.init(
       type: DataTypes.INTEGER,
       allowNull: true, // Allow null for backward compatibility
     },
+    orderDate: {
+      type: DataTypes.INTEGER,
+      allowNull: true, // Allow null for updates
+    },
     menuId: {
       type: DataTypes.INTEGER,
       allowNull: true, // Allow null for backward compatibility

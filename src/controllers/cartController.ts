@@ -10,6 +10,7 @@ import User from '../models/user';
 import Order from '../models/order';
 import OrderItem from '../models/orderItem';
 import Payment from '../models/payment';
+import MenuItem from '../models/menuItem';
 
 import logger from '../common/logger';
 import { statusCodes } from '../common/statusCodes';
@@ -17,25 +18,24 @@ import { getMessage } from '../common/utils';
 import { Op, Transaction } from 'sequelize';
 import { sequelize } from '../config/database';
 import QRCode from 'qrcode';
-
+import moment from 'moment-timezone'; // Import moment-timezone
+moment.tz('Asia/Kolkata')
 /**
  * Add an item to the user's cart with transaction support
- * Updated to include canteenId and menuConfigurationId
+ * Updated to include canteenId, menuConfigurationId, and orderDate
  */
 export const addToCart = async (req: Request, res: Response): Promise<Response> => {
   const transaction = await sequelize.transaction({ isolationLevel: Transaction.ISOLATION_LEVELS.READ_COMMITTED });
 
   try {
-
-    const { userId } = req.user as { userId: string }; // Extract userId from the request body
-
-    const {  itemId, quantity, menuId, canteenId, menuConfigurationId } = req.body;
+    const { userId } = req.user as unknown as { userId: string }; // Extract userId from the request body
+    const { itemId, quantity, menuId, canteenId, menuConfigurationId, orderDate } = req.body; // Include orderDate in the request body
 
     // Validate required fields
-    if (!userId || !itemId || !quantity || !menuId || !canteenId || !menuConfigurationId) {
+    if (!userId || !itemId || !quantity || !menuId || !canteenId || !menuConfigurationId || !orderDate) {
       return res.status(statusCodes.BAD_REQUEST).json({
         message: getMessage('validation.validationError'),
-        errors: ['userId, itemId, quantity, menuId, canteenId, and menuConfigurationId are required'],
+        errors: ['userId, itemId, quantity, menuId, canteenId, menuConfigurationId, and orderDate are required'],
       });
     }
 
@@ -46,23 +46,59 @@ export const addToCart = async (req: Request, res: Response): Promise<Response> 
       });
     }
 
-    // Verify the item exists and get its pricing
-    console.log('Fetching item with ID:', itemId);
-    const item = await Item.findByPk(itemId, {
-      include: [{ model: Pricing, as: 'pricing' }],
+   // Convert orderDate to Unix timestamp
+const formattedOrderDate = moment(orderDate, 'DD-MM-YYYY'); // Parse the orderDate in dd-mm-yyyy format
+if (!formattedOrderDate.isValid()) {
+  return res.status(statusCodes.BAD_REQUEST).json({
+    message: getMessage('validation.invalidOrderDate'),
+    errors: ['Invalid order date format. Expected format: DD-MM-YYYY'],
+  });
+}
+const orderDateUnix = formattedOrderDate.unix(); // Convert to Unix timestamp
+
+
+    // Verify the item exists in the menu and check its minimum and maximum quantity
+    const menuItem: any = await MenuItem.findOne({
+      where: { itemId, menuId },
+      include: [
+        {
+          model: Item,
+          as: 'menuItemItem', // Ensure this matches the alias in the MenuItem -> Item association
+          include: [
+            {
+              model: Pricing,
+              as: 'itemPricing', // Ensure this matches the alias in the Item -> Pricing association
+            },
+          ],
+        },
+      ],
       transaction,
     });
-    console.log('Fetched item:', item);
 
-    if (!item) {
+    if (!menuItem) {
       await transaction.rollback();
       return res.status(statusCodes.NOT_FOUND).json({
-        message: getMessage('item.notFound'),
+        message: getMessage('menu.itemNotFound'),
+      });
+    }
+
+    // Check for minimum and maximum quantity constraints
+    if (quantity < menuItem.minQuantity) {
+      await transaction.rollback();
+      return res.status(statusCodes.BAD_REQUEST).json({
+        message: getMessage('menu.itemBelowMinQuantity'),
+        errors: [`Minimum quantity for this item is ${menuItem.minQuantity}`],
+      });
+    }
+    if (quantity > menuItem.maxQuantity) {
+      await transaction.rollback();
+      return res.status(statusCodes.BAD_REQUEST).json({
+        message: getMessage('menu.itemAboveMaxQuantity'),
+        errors: [`Maximum quantity for this item is ${menuItem.maxQuantity}`],
       });
     }
 
     // Get or create the user's cart
-    console.log('Finding or creating cart for userId:', userId);
     let [cart, created] = await Cart.findOrCreate({
       where: { userId, status: 'active' },
       defaults: {
@@ -72,10 +108,10 @@ export const addToCart = async (req: Request, res: Response): Promise<Response> 
         canteenId,
         menuConfigurationId,
         menuId,
+        orderDate: orderDateUnix, // Add the order date as Unix timestamp
       },
       transaction,
     });
-    console.log('Cart:', cart, 'Created:', created);
 
     if (!created && cart.canteenId !== canteenId) {
       await transaction.rollback();
@@ -86,20 +122,29 @@ export const addToCart = async (req: Request, res: Response): Promise<Response> 
     }
 
     // Calculate item price
-    const price = item.pricing ? item.pricing.price : 0;
+    const price = menuItem.menuItemItem?.itemPricing?.price || 0;
     const itemTotal = price * quantity;
 
     // Check if the item already exists in the cart
-    console.log('Checking for existing cart item with itemId:', itemId);
-    const existingCartItem = await CartItem.findOne({
-      where: { cartId: cart.id, itemId, menuId, },
+    const existingCartItem:any = await CartItem.findOne({
+      where: { cartId: cart.id, itemId, menuId },
       transaction,
     });
-    console.log('Existing Cart Item:', existingCartItem);
 
     if (existingCartItem) {
       existingCartItem.quantity += quantity;
+
+      // Ensure the updated quantity does not exceed the maximum quantity
+      if (existingCartItem.quantity > menuItem.maxQuantity) {
+        await transaction.rollback();
+        return res.status(statusCodes.BAD_REQUEST).json({
+          message: getMessage('menu.itemAboveMaxQuantity'),
+          errors: [`Maximum quantity for this item is ${menuItem.maxQuantity}`],
+        });
+      }
+
       existingCartItem.total = existingCartItem.quantity * price;
+      existingCartItem.orderDate = orderDateUnix; // Update the order date as Unix timestamp
       await existingCartItem.save({ transaction });
     } else {
       await CartItem.create(
@@ -111,6 +156,7 @@ export const addToCart = async (req: Request, res: Response): Promise<Response> 
           price,
           total: itemTotal,
           canteenId,
+          orderDate: orderDateUnix, // Add the order date as Unix timestamp
         },
         { transaction }
       );
@@ -118,12 +164,8 @@ export const addToCart = async (req: Request, res: Response): Promise<Response> 
 
     // Update cart total
     const cartItems = await CartItem.findAll({ where: { cartId: cart.id }, transaction });
-    if (cart) {
-      if (cart) {
-        cart.totalAmount = cartItems.reduce((sum, item) => sum + item.total, 0);
-        await cart.save({ transaction });
-      }
-    }
+    cart.totalAmount = cartItems.reduce((sum, item) => sum + item.total, 0);
+    await cart.save({ transaction });
 
     // Commit transaction
     await transaction.commit();
@@ -153,7 +195,6 @@ export const updateCartItem = async (req: Request, res: Response): Promise<Respo
 
     // Validate required fields
     if (!cartId || !cartItemId || !quantity) {
-      console.log('Validation failed. Missing cartId, cartItemId, or quantity:', req.body);
       return res.status(statusCodes.BAD_REQUEST).json({
         message: getMessage('validation.validationError'),
         errors: ['cartId, cartItemId, and quantity are required'],
@@ -161,7 +202,6 @@ export const updateCartItem = async (req: Request, res: Response): Promise<Respo
     }
 
     if (quantity <= 0) {
-      console.log('Validation failed. Quantity must be greater than 0:', quantity);
       return res.status(statusCodes.BAD_REQUEST).json({
         message: getMessage('validation.validationError'),
         errors: ['Quantity must be greater than 0'],
@@ -169,10 +209,8 @@ export const updateCartItem = async (req: Request, res: Response): Promise<Respo
     }
 
     // Verify the cart exists
-    console.log('Fetching cart with ID:', cartId);
     const cart = await Cart.findByPk(cartId, { transaction });
     if (!cart) {
-      console.log('Cart not found with ID:', cartId);
       await transaction.rollback();
       return res.status(statusCodes.NOT_FOUND).json({
         message: getMessage('cart.notFound'),
@@ -180,33 +218,63 @@ export const updateCartItem = async (req: Request, res: Response): Promise<Respo
     }
 
     // Verify the cart item exists and belongs to the specified cart
-    console.log('Fetching cart item with cartItemId:', cartItemId, 'and cartId:', cartId);
-    const cartItem = await CartItem.findOne({
+    const cartItem:any = await CartItem.findOne({
       where: { itemId: cartItemId, cartId }, // Ensure the cartItem belongs to the specified cart
+      include: [
+        {
+          model: MenuItem,
+          as: 'menuItem', // Ensure this matches the alias in the CartItem -> MenuItem association
+          include: [{ model: Item, as: 'menuItemItem' }], // Ensure this matches the alias in the MenuItem -> Item association
+        },
+      ],
       transaction,
     });
+
+
+
     if (!cartItem) {
-      console.log('CartItem not found or does not belong to the specified cartId:', cartId);
       await transaction.rollback();
       return res.status(statusCodes.NOT_FOUND).json({
         message: getMessage('cart.itemNotFound'),
       });
     }
 
+    // Check for minimum and maximum quantity constraints
+    const menuItem = cartItem.menuItem;
+    if (!menuItem) {
+      await transaction.rollback();
+      return res.status(statusCodes.NOT_FOUND).json({
+        message: getMessage('menu.itemNotFound'),
+      });
+    }
+
+    if (quantity < menuItem.minQuantity) {
+      await transaction.rollback();
+      return res.status(statusCodes.BAD_REQUEST).json({
+        message: getMessage('menu.itemBelowMinQuantity'),
+        errors: [`Minimum quantity for this item is ${menuItem.minQuantity}`],
+      });
+    }
+
+    if (quantity > menuItem.maxQuantity) {
+      await transaction.rollback();
+      return res.status(statusCodes.BAD_REQUEST).json({
+        message: getMessage('menu.itemAboveMaxQuantity'),
+        errors: [`Maximum quantity for this item is ${menuItem.maxQuantity}`],
+      });
+    }
+
     // Update the cart item
-    console.log('Updating cart item with ID:', cartItemId);
     cartItem.quantity = quantity;
     cartItem.total = cartItem.price * quantity;
     await cartItem.save({ transaction });
 
     // Update the cart total
-    console.log('Updating cart total for cartId:', cartId);
     const cartItems = await CartItem.findAll({ where: { cartId }, transaction });
     cart.totalAmount = cartItems.reduce((sum, item) => sum + item.total, 0);
     await cart.save({ transaction });
 
     // Commit transaction
-    console.log('Committing transaction for updating cart item with ID:', cartItemId);
     await transaction.commit();
 
     return res.status(statusCodes.SUCCESS).json({
@@ -233,7 +301,6 @@ export const removeCartItem = async (req: Request, res: Response): Promise<Respo
   try {
     const { cartId, cartItemId } = req.body; // Extract cartId and cartItemId from the request body
 
-    console.log("!!!!!!!!!!!!!!!!");
     // Validate required fields
     if (!cartId || !cartItemId) {
       return res.status(statusCodes.BAD_REQUEST).json({
@@ -243,7 +310,6 @@ export const removeCartItem = async (req: Request, res: Response): Promise<Respo
     }
 
     // Verify the cart exists
-    console.log("@@@@@@@@@@@@@@@@@@!");
 
     const cart = await Cart.findByPk(cartId, { transaction });
     if (!cart) {
@@ -252,7 +318,6 @@ export const removeCartItem = async (req: Request, res: Response): Promise<Respo
         message: getMessage('cart.notFound'),
       });
     }
-    console.log("######################");
 
     // Verify the cart item exists and belongs to the specified cart
     const cartItem = await CartItem.findOne({
@@ -263,7 +328,6 @@ export const removeCartItem = async (req: Request, res: Response): Promise<Respo
       transaction,
     });
 
-    console.log("$$$$$$$$$$$$$$$$$$$$$##########################");
 
     if (!cartItem) {
       await transaction.rollback();
@@ -271,18 +335,15 @@ export const removeCartItem = async (req: Request, res: Response): Promise<Respo
         message: getMessage('cart.itemNotFound'),
       });
     }
-    console.log("%%%%%%%%%%%%%%%%%%%%%%%");
 
     // Remove the cart item
     await cartItem.destroy({ transaction });
-    console.log("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$");
 
     // Update the cart total
     const cartItems = await CartItem.findAll({ where: { cartId }, transaction });
     cart.totalAmount = cartItems.reduce((sum, item) => sum + item.total, 0);
     await cart.save({ transaction });
 
-    console.log("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$@@@@@@@@@@@@@@@@");
 
     // Commit transaction
     await transaction.commit();
@@ -309,7 +370,7 @@ export const removeCartItem = async (req: Request, res: Response): Promise<Respo
 
 export const getCart = async (req: Request, res: Response): Promise<Response> => {
   try {
-    const { userId } = req.user as { userId: string }; // Extract userId from the request body
+    const { userId } = req.user as unknown as { userId: string }; // Extract userId from the request body
     if (!userId) {
       return res.status(statusCodes.BAD_REQUEST).json({
         message: getMessage('validation.validationError'),
@@ -386,7 +447,7 @@ export const clearCart = async (req: Request, res: Response): Promise<Response> 
   const transaction = await sequelize.transaction({ isolationLevel: Transaction.ISOLATION_LEVELS.READ_COMMITTED });
 
   try {
-    const { userId } = req.user as { userId: string }; // Extract userId from the request body
+    const { userId } = req.user as unknown as { userId: string }; // Extract userId from the request body
 
     // Validate required fields
     if (!userId) {
@@ -436,7 +497,7 @@ export const createCart = async (req: Request, res: Response): Promise<Response>
   const transaction: Transaction = await sequelize.transaction();
 
   try {
-    const { userId } = req.user as { userId: string };
+    const { userId } = req.user as unknown as { userId: string };
     const { items } = req.body;
 
     if (!userId || !items || items.length === 0) {

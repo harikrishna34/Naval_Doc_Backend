@@ -52,6 +52,10 @@ Order.init(
       type: DataTypes.INTEGER,
       allowNull: true, // Allow null for updates
     },
+    orderDate: {
+      type: DataTypes.INTEGER,
+      allowNull: true, // Allow null for updates
+    },
     createdAt: {
       type: DataTypes.DATE,
       get() {
