@@ -9,6 +9,7 @@ import menuConfigurationRoutes from './routes/menuConfigurationRoutes';
 import menuRoutes from './routes/menuRoutes';
 import orderRoutes from './routes/orderRoutes';
 import adminDashboardRoutes from './routes/adminDashboardRoutes';
+import voiceRoutes from './routes/voiceRoutes';
 
 
 
@@ -230,6 +231,9 @@ app.use('/api/cart', cartRoutes);
 app.use('/api/order', orderRoutes);
 
  app.use('/api/adminDasboard', adminDashboardRoutes);
+
+ app.use('/api/voice', voiceRoutes);
+
 
 
 

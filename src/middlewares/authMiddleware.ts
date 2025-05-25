@@ -22,10 +22,16 @@ declare global {
 import jwt, { JwtPayload } from 'jsonwebtoken';
 import { getCustomerDetails, getMessage } from '../common/utils';
 import { statusCodes } from '../common/statusCodes';
+import logger from '../common/logger';
 
 const authenticateToken = async (req: Request, res: Response, next: NextFunction) => {
   const token = req.headers.authorization;
-
+  console.log('Token:', token);
+  if (Array.isArray(token)) {
+    return res.status(statusCodes.UNAUTHORIZED).json({
+      message: getMessage('error.tokenRequired'),
+    });
+  }
   if (!token) {
     return res.status(statusCodes.UNAUTHORIZED).json({
       message: getMessage('error.tokenRequired'),

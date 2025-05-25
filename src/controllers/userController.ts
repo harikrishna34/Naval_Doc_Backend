@@ -15,6 +15,8 @@ import logger from '../common/logger';
 export const getAllCanteens = async (req: Request, res: Response): Promise<Response> => {
   try {
     // Fetch all canteens
+
+    console.log('Fetching all canteens');
     const canteens = await Canteen.findAll();
 
     if (!canteens || canteens.length === 0) {

@@ -190,7 +190,7 @@ export const PaymentLink = async (order:any,payment:any,user:any): Promise<Respo
 
 
 
-    let linkId = "testcash_link_";
+    let linkId = "testcash_san_";
     linkId=linkId.concat(payment.id);
     const payload = {
       link_id: linkId,
@@ -202,7 +202,7 @@ export const PaymentLink = async (order:any,payment:any,user:any): Promise<Respo
         customer_phone: user.mobile,
       },
       link_meta: {
-        return_url: `${process.env.BASE_URL}/api/order/cashfreecallback?link_id=${linkId}`, // Include linkId in return_url
+        return_url: `${process.env.APPLICATION_URL}/paymentResponse?link_id=${linkId}`, // Include linkId in return_url
         notify_url: `${process.env.BASE_URL}/api/order/cashfreecallback`, // Add notify URL
       },
       link_notify: {
@@ -244,11 +244,14 @@ export const PaymentLink = async (order:any,payment:any,user:any): Promise<Respo
     if (response.status === 200 && response.data) {
       const { link_id, link_url } = response.data;
 
+      console.log('response', response.data);
+
       // Construct the payment link
       const paymentLink = link_url;
       // Return the payment link as a response
       return paymentLink;
     } else {
+      console.error('Error creating payment link:');
       // Return an error response if the API call fails
       return new Response('Failed to create payment link', { status: 400 });
     }
