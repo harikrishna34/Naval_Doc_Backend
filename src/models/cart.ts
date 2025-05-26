@@ -59,3 +59,20 @@ Cart.init(
 );
 
 export default Cart;
+// This code defines a Cart model using Sequelize ORM for a Node.js application.
+// The Cart model includes fields for user ID, status, total amount, canteen ID, menu configuration ID, and menu ID.
+// It also includes timestamps for created and updated dates. The model is initialized with appropriate data types and constraints.
+
+
+// The Cart model is exported for use in other parts of the application, such as controllers or services.
+// This allows for creating, reading, updating, and deleting cart records in the database.
+//       return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
+//         message: 'An error occurred while processing your request.',   
+//       });
+//     }
+//   } catch (error) {
+//     console.error('Error creating payment link:', error);
+//     return res.status(statusCodes.INTERNAL_SERVER_ERROR).json({
+
+//       message: 'An error occurred while creating the payment link.',
+//     });
