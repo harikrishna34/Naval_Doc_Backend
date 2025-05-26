@@ -260,8 +260,11 @@ const MENU = {
 };
 
 app.post('/webhook', async (req: Request, res: Response) => {
+  console.log('Received webhook request:', req.body);
   const message = req.body?.message?.text;
+  console.log('Received webhook request:', req.body?.message?.text);
   const from = req.body?.message?.from;
+  console.log('Received webhook request:', req.body?.message?.from);
 
   console.log('Received message:', message, 'from:', from);
 
