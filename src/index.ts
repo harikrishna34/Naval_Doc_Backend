@@ -12,6 +12,8 @@ import adminDashboardRoutes from './routes/adminDashboardRoutes';
 import voiceRoutes from './routes/voiceRoutes';
 
 import { Buffer } from 'buffer';
+import base64 from 'base-64'; // Install via: npm install base-64
+
 
 
 
@@ -335,14 +337,15 @@ app.post('/webhook', async (req: Request, res: Response) => {
 
     console.log('Payload being sent:', JSON.stringify(payload, null, 2));
 
+    const username = 'world_tek';
+    const password = 'T7W9&w3396Y"'; // Replace with actual password
     // Encode username and password in Base64
-    const auth = Buffer.from(`world_tek:T7W9&w3396Y"`).toString('base64');
+    const auth = base64.encode(`${username}:${password}`);
 
     const response = await axios.post(AIRTEL_API_URL, payload, {
       headers: {
         Authorization: `Basic ${auth}`,
         'Content-Type': 'application/json',
-        'X-Correlation-Id': 'abcd', // Optional header for correlation
       },
     });
 
@@ -357,6 +360,40 @@ app.post('/webhook', async (req: Request, res: Response) => {
 
   res.sendStatus(200);
 });
+
+
+const sendWhatsAppMessage = async () => {
+  const url = 'https://iqwhatsapp.airtel.in/gateway/airtel-xchange/basic/whatsapp-manager/v1/session/send/text';
+  const username = 'world_tek';
+  const password = 'T7W9&w3396Y"'; // Replace with actual password
+ 
+
+  const auth = base64.encode(`${username}:${password}`);
+
+  const payload = {
+    sessionId: '78955',
+    to: '919490219062',
+    from: '917337068888',
+    message: {
+      text: 'Hi'
+    }
+  };
+
+  try {
+    const response = await axios.post(url, payload, {
+      headers: {
+        'Authorization': `Basic ${auth}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    console.log('Message sent successfully:', response.data);
+  } catch (error:any) {
+    console.error('Error sending message:', error.response?.data || error.message);
+  }
+};
+
+sendWhatsAppMessage();
 
 
 
