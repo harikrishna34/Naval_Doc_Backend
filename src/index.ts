@@ -230,9 +230,9 @@ app.use('/api/cart', cartRoutes);
 
 app.use('/api/order', orderRoutes);
 
- app.use('/api/adminDasboard', adminDashboardRoutes);
+app.use('/api/adminDasboard', adminDashboardRoutes);
 
- app.use('/api/voice', voiceRoutes);
+app.use('/api/voice', voiceRoutes);
 
 
 
@@ -242,9 +242,9 @@ app.use('/api/order', orderRoutes);
 const AIRTEL_TOKEN = process.env.AIRTEL_TOKEN!;
 // const FROM_NUMBER = process.env.FROM_NUMBER!; // Airtel-registered number
 
-const AIRTEL_API_URL="https://iqwhatsapp.airtel.in/gateway/airtel-xchange/basic/whatsapp-manager/v1/session/send/text"
+const AIRTEL_API_URL = "https://iqwhatsapp.airtel.in/gateway/airtel-xchange/basic/whatsapp-manager/v1/session/send/text"
 
-const FROM_NUMBER=917337068888
+const FROM_NUMBER = 917337068888
 
 interface UserSession {
   items: string[];
@@ -309,36 +309,36 @@ app.post('/webhook', async (req: Request, res: Response) => {
 
   // 📨 Send reply via Airtel API
   // 📨 Send reply via Airtel API
-try {
-  await axios.post(
-    AIRTEL_API_URL,
-    {
-      sessionId: req.body.sessionId || generateUuid(), // Use sessionId from the payload or generate a new one
-      to: from,
-      from: FROM_NUMBER,
-      message: {
-        text: reply,
+  try {
+    await axios.post(
+      AIRTEL_API_URL,
+      {
+        sessionId: req.body.sessionId || generateUuid(), // Use sessionId from the payload or generate a new one
+        to: from,
+        from: FROM_NUMBER,
+        message: {
+          text: reply,
+        },
       },
-    },
-    {
-      auth: {
-        username: 'world_tek', // Replace with your actual username
-        password: 'T7W9&w3396Y"', // Replace with your actual password
-      },
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      {
+        auth: {
+          username: 'world_tek', // Replace with your actual username
+          password: 'T7W9&w3396Y"', // Replace with your actual password
+        },
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+    console.log(`📤 Reply sent to ${from}`);
+  } catch (err: any) {
+    // console.error('❌ Error sending reply via Airtel:', err);
+    if (err.response) {
+       console.error('Response data:', err.response.data);
+      console.error('Response status:', err.response.status);
+      // console.error('Response headers:', err.response.headers);
     }
-  );
-  console.log(`📤 Reply sent to ${from}`);
-} catch (err: any) {
-  // console.error('❌ Error sending reply via Airtel:', err);
-  if (err.response) {
-    // console.error('Response data:', err.response.data);
-    console.error('Response status:', err.response.status);
-    // console.error('Response headers:', err.response.headers);
   }
-}
 
   res.sendStatus(200);
 });
