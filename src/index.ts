@@ -308,33 +308,37 @@ app.post('/webhook', async (req: Request, res: Response) => {
   }
 
   // 📨 Send reply via Airtel API
-  try {
-    await axios.post(
-      AIRTEL_API_URL,
-      {
-        sessionId: req.body.sessionId || generateUuid(), // Use sessionId from the payload or generate a new one
-        to: from,
-        from: FROM_NUMBER,
-        message: {
-          text: reply,
-        },
+  // 📨 Send reply via Airtel API
+try {
+  await axios.post(
+    AIRTEL_API_URL,
+    {
+      sessionId: req.body.sessionId || generateUuid(), // Use sessionId from the payload or generate a new one
+      to: from,
+      from: FROM_NUMBER,
+      message: {
+        text: reply,
       },
-      {
-        headers: {
-          Authorization: `Bearer ${AIRTEL_TOKEN}`,
-          'Content-Type': 'application/json',
-        },
-      }
-    );
-    console.log(`📤 Reply sent to ${from}`);
-  } catch (err: any) {
-    console.error('❌ Error sending reply via Airtel:', err);
-    if (err.response) {
-      console.error('Response data:', err.response.data);
-      console.error('Response status:', err.response.status);
-      console.error('Response headers:', err.response.headers);
+    },
+    {
+      auth: {
+        username: 'world_tek', // Replace with your actual username
+        password: 'T7W9&w3396Y"', // Replace with your actual password
+      },
+      headers: {
+        'Content-Type': 'application/json',
+      },
     }
+  );
+  console.log(`📤 Reply sent to ${from}`);
+} catch (err: any) {
+  console.error('❌ Error sending reply via Airtel:', err);
+  if (err.response) {
+    console.error('Response data:', err.response.data);
+    console.error('Response status:', err.response.status);
+    console.error('Response headers:', err.response.headers);
   }
+}
 
   res.sendStatus(200);
 });
