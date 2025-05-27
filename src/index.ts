@@ -11,6 +11,7 @@ import orderRoutes from './routes/orderRoutes';
 import adminDashboardRoutes from './routes/adminDashboardRoutes';
 import voiceRoutes from './routes/voiceRoutes';
 
+import { Buffer } from 'buffer';
 
 
 
@@ -332,28 +333,24 @@ app.post('/webhook', async (req: Request, res: Response) => {
       },
     };
 
-    console.log('Payload being sent:', payload);
+    console.log('Payload being sent:', JSON.stringify(payload, null, 2));
 
-    const response = await axios.post(
-      AIRTEL_API_URL,
-      payload,
-      {
-        auth: {
-          username: 'world_tek', // Replace with your actual username
-          password: 'T7W9&w3396Y"', // Replace with your actual password
-        },
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Correlation-Id': 'abcd', // Optional header for correlation
-        },
-      }
-    );
+    // Encode username and password in Base64
+    const auth = Buffer.from(`world_tek:T7W9&w3396Y"`).toString('base64');
+
+    const response = await axios.post(AIRTEL_API_URL, payload, {
+      headers: {
+        Authorization: `Basic ${auth}`,
+        'Content-Type': 'application/json',
+        'X-Correlation-Id': 'abcd', // Optional header for correlation
+      },
+    });
 
     console.log(`📤 Reply sent to ${from}:`, response.data);
   } catch (err: any) {
     console.error('❌ Error sending reply via Airtel:', err.message);
     if (err.response) {
-      console.error('Response data:', err.response.data);
+      console.error('Response data:', JSON.stringify(err.response.data, null, 2));
       console.error('Response status:', err.response.status);
     }
   }
