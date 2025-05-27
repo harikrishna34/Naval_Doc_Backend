@@ -332,11 +332,11 @@ try {
   );
   console.log(`📤 Reply sent to ${from}`);
 } catch (err: any) {
-  console.error('❌ Error sending reply via Airtel:', err);
+  // console.error('❌ Error sending reply via Airtel:', err);
   if (err.response) {
-    console.error('Response data:', err.response.data);
+    // console.error('Response data:', err.response.data);
     console.error('Response status:', err.response.status);
-    console.error('Response headers:', err.response.headers);
+    // console.error('Response headers:', err.response.headers);
   }
 }
 
