@@ -316,6 +316,11 @@ app.post('/webhook', async (req: Request, res: Response) => {
   }
 
   // 📨 Send reply via Airtel API
+  console.log(`📤 Sending reply to ${from}: ${reply}`,FROM_NUMBER) ;
+  console.log(`Airtel API URL: ${AIRTEL_API_URL}`);
+  console.log(`Airtel Token: ${AIRTEL_TOKEN}`);
+  console.log(`From Number: ${FROM_NUMBER}`);
+
   try {
     await axios.post(
       AIRTEL_API_URL,
