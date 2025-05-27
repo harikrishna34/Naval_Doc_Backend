@@ -238,11 +238,13 @@ app.use('/api/order', orderRoutes);
 
 
 
- const AIRTEL_API_URL = process.env.AIRTEL_API_URL!;
+//  const AIRTEL_API_URL = process.env.AIRTEL_API_URL!;
 const AIRTEL_TOKEN = process.env.AIRTEL_TOKEN!;
-const FROM_NUMBER = process.env.FROM_NUMBER!; // Airtel-registered number
+// const FROM_NUMBER = process.env.FROM_NUMBER!; // Airtel-registered number
 
+const AIRTEL_API_URL="https://iqwhatsapp.airtel.in/gateway/airtel-xchange/basic/whatsapp-manager/v1/session/send/text"
 
+const FROM_NUMBER=917337068888
 
 interface UserSession {
   items: string[];
@@ -261,12 +263,10 @@ const MENU = {
 
 app.post('/webhook', async (req: Request, res: Response) => {
   console.log('Received webhook request:', req.body);
-  const message = req.body?.message?.text;
-  console.log('Received webhook request:', req.body?.message?.text);
-  const from = req.body?.message?.from;
-  console.log('Received webhook request:', req.body?.message?.from);
+  const { message, from } = req.body;
+  console.log(`📥 Incoming message from ${from}: ${message}`);
 
-  console.log('Received message:', message, 'from:', from);
+ 
 
   if (!message || !from) {
     return res.sendStatus(200);
