@@ -325,57 +325,60 @@ app.post('/webhook', async (req: Request, res: Response) => {
   console.log(`Airtel API URL: ${AIRTEL_API_URL}`);
   console.log(`From Number: ${FROM_NUMBER}`);
 
-  try {
-    const payload = {
-      sessionId: req.body.sessionId || generateUuid(), // Use sessionId from the payload or generate a new one
-      to: from,
-      from: FROM_NUMBER,
-      message: {
-        text: reply,
-      },
-    };
+  sendWhatsAppMessage(from, reply);
 
-    console.log('Payload being sent:', JSON.stringify(payload, null, 2));
+  // try {
+  //   const payload = {
+  //     sessionId: req.body.sessionId || generateUuid(), // Use sessionId from the payload or generate a new one
+  //     to: from,
+  //     from: FROM_NUMBER,
+  //     message: {
+  //       text: reply,
+  //     },
+  //   };
 
-    const username = 'world_tek';
-    const password = 'T7W9&w3396Y"'; // Replace with actual password
-    // Encode username and password in Base64
-    const auth = base64.encode(`${username}:${password}`);
+  //   console.log('Payload being sent:', JSON.stringify(payload, null, 2));
 
-    const response = await axios.post(AIRTEL_API_URL, payload, {
-      headers: {
-        Authorization: `Basic ${auth}`,
-        'Content-Type': 'application/json',
-      },
-    });
+  //   const username = 'world_tek';
+  //   const password = 'T7W9&w3396Y"'; // Replace with actual password
+  //   // Encode username and password in Base64
+  //   const auth = base64.encode(`${username}:${password}`);
 
-    // console.log(`📤 Reply sent to ${from}:`, response.data);
-  } catch (err: any) {
-    console.error('❌ Error sending reply via Airtel:', err);
-    if (err.response) {
-      // console.error('Response data:', JSON.stringify(err.response.data, null, 2));
-      // console.error('Response status:', err.response.status);
-    }
-  }
+  //   const response = await axios.post(AIRTEL_API_URL, payload, {
+  //     headers: {
+  //       Authorization: `Basic ${auth}`,
+  //       'Content-Type': 'application/json',
+  //     },
+  //   });
+
+  //   // console.log(`📤 Reply sent to ${from}:`, response.data);
+  // } catch (err: any) {
+  //   console.error('❌ Error sending reply via Airtel:', err);
+  //   if (err.response) {
+  //     // console.error('Response data:', JSON.stringify(err.response.data, null, 2));
+  //     // console.error('Response status:', err.response.status);
+  //   }
+  // }
 
   res.sendStatus(200);
 });
 
 
-const sendWhatsAppMessage = async () => {
+const sendWhatsAppMessage = async (from:any,reply:any) => {
   const url = 'https://iqwhatsapp.airtel.in/gateway/airtel-xchange/basic/whatsapp-manager/v1/session/send/text';
   const username = 'world_tek';
   const password = 'T7W9&w3396Y"'; // Replace with actual password
- 
+  
+  console.log(`📤 Sending reply to ${from}: ${reply}`);
 
   const auth = base64.encode(`${username}:${password}`);
 
   const payload = {
     sessionId: '78955',
-    to: '919490219062',
+    to: from,
     from: '917337068888',
     message: {
-      text: 'Hi'
+      text: reply
     }
   };
 
@@ -393,7 +396,6 @@ const sendWhatsAppMessage = async () => {
   }
 };
 
-sendWhatsAppMessage();
 
 
 
