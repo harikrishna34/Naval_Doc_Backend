@@ -263,17 +263,22 @@ const MENU = {
 
 app.post('/webhook', async (req: Request, res: Response) => {
   console.log('Received webhook request:', req.body);
-  const { message, from } = req.body;
-  console.log(`📥 Incoming message from ${from}: ${message}`);
 
- 
+  // Extract relevant fields from the webhook payload
+  const { from, profile, message } = req.body;
 
-  if (!message || !from) {
-    return res.sendStatus(200);
+  // Validate the payload structure
+  if (!from || !message || !message.text || !message.text.body) {
+    console.error('Invalid webhook payload:', req.body);
+    return res.status(400).json({ message: 'Invalid webhook payload.' });
   }
 
-  const text = message.trim().toLowerCase();
+  const senderName = profile?.name || 'Customer'; // Default to 'Customer' if name is not provided
+  const text = message.text.body.trim().toLowerCase(); // Extract and normalize the message text
 
+  console.log(`📥 Incoming message from ${from} (${senderName}): ${text}`);
+
+  // Initialize session if it doesn't exist
   if (!sessions[from]) {
     sessions[from] = { items: [], confirmed: false };
   }
@@ -281,8 +286,9 @@ app.post('/webhook', async (req: Request, res: Response) => {
   const session = sessions[from];
   let reply = '';
 
+  // Handle different message types
   if (text === 'hi' || text === 'hello') {
-    reply = '👋 Welcome to FoodieBot! Here\'s our menu:\n';
+    reply = `👋 Welcome to FoodieBot, ${senderName}! Here's our menu:\n`;
     for (const [key, item] of Object.entries(MENU)) {
       reply += `${key}. ${item.name} - ₹${item.price}\n`;
     }
@@ -306,7 +312,7 @@ app.post('/webhook', async (req: Request, res: Response) => {
     await axios.post(
       AIRTEL_API_URL,
       {
-        sessionId: generateUuid(), // or reuse session ID if required
+        sessionId: req.body.sessionId || generateUuid(), // Use sessionId from the payload or generate a new one
         to: from,
         from: FROM_NUMBER,
         message: {
