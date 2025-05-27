@@ -346,12 +346,12 @@ app.post('/webhook', async (req: Request, res: Response) => {
       },
     });
 
-    console.log(`📤 Reply sent to ${from}:`, response.data);
+    // console.log(`📤 Reply sent to ${from}:`, response.data);
   } catch (err: any) {
-    console.error('❌ Error sending reply via Airtel:', err.message);
+    console.error('❌ Error sending reply via Airtel:', err);
     if (err.response) {
-      console.error('Response data:', JSON.stringify(err.response.data, null, 2));
-      console.error('Response status:', err.response.status);
+      // console.error('Response data:', JSON.stringify(err.response.data, null, 2));
+      // console.error('Response status:', err.response.status);
     }
   }
 
