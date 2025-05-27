@@ -264,17 +264,25 @@ const MENU = {
 app.post('/webhook', async (req: Request, res: Response) => {
   console.log('Received webhook request:', req.body);
 
-  // Extract relevant fields from the webhook payload
-  const { from, profile, message } = req.body;
+  let from: string;
+  let text: string;
+  let senderName: string;
 
-  // Validate the payload structure
-  if (!from || !message || !message.text || !message.text.body) {
+  // Detect the payload format and extract relevant fields
+  if (req.body.from && req.body.message?.text?.body) {
+    // Format 1
+    from = req.body.from;
+    text = req.body.message.text.body.trim().toLowerCase();
+    senderName = req.body.profile?.name || 'Customer'; // Default to 'Customer' if name is not provided
+  } else if (req.body.sourceAddress && req.body.messageParameters?.text?.body) {
+    // Format 2
+    from = req.body.sourceAddress;
+    text = req.body.messageParameters.text.body.trim().toLowerCase();
+    senderName = 'Customer'; // No sender name in this format
+  } else {
     console.error('Invalid webhook payload:', req.body);
     return res.status(400).json({ message: 'Invalid webhook payload.' });
   }
-
-  const senderName = profile?.name || 'Customer'; // Default to 'Customer' if name is not provided
-  const text = message.text.body.trim().toLowerCase(); // Extract and normalize the message text
 
   console.log(`📥 Incoming message from ${from} (${senderName}): ${text}`);
 
@@ -308,7 +316,6 @@ app.post('/webhook', async (req: Request, res: Response) => {
   }
 
   // 📨 Send reply via Airtel API
-  // 📨 Send reply via Airtel API
   try {
     await axios.post(
       AIRTEL_API_URL,
@@ -332,11 +339,10 @@ app.post('/webhook', async (req: Request, res: Response) => {
     );
     console.log(`📤 Reply sent to ${from}`);
   } catch (err: any) {
-    // console.error('❌ Error sending reply via Airtel:', err);
+    console.error('❌ Error sending reply via Airtel:', err.message);
     if (err.response) {
-       console.error('Response data:', err.response.data);
+      console.error('Response data:', err.response.data);
       console.error('Response status:', err.response.status);
-      // console.error('Response headers:', err.response.headers);
     }
   }
 
