@@ -239,12 +239,13 @@ app.use('/api/voice', voiceRoutes);
 
 
 //  const AIRTEL_API_URL = process.env.AIRTEL_API_URL!;
-const AIRTEL_TOKEN = process.env.AIRTEL_TOKEN!;
+// const AIRTEL_TOKEN = process.env.AIRTEL_TOKEN!;
 // const FROM_NUMBER = process.env.FROM_NUMBER!; // Airtel-registered number
 
 const AIRTEL_API_URL = "https://iqwhatsapp.airtel.in/gateway/airtel-xchange/basic/whatsapp-manager/v1/session/send/text"
 
 const FROM_NUMBER = 917337068888
+const AIRTEL_TOKEN = 'T7W9&w3396Y"';
 
 interface UserSession {
   items: string[];
@@ -316,6 +317,7 @@ app.post('/webhook', async (req: Request, res: Response) => {
   }
 
   // 📨 Send reply via Airtel API
+  console.log(`--------------------------------`);
   console.log(`📤 Sending reply to ${from}: ${reply}`,FROM_NUMBER) ;
   console.log(`Airtel API URL: ${AIRTEL_API_URL}`);
   console.log(`Airtel Token: ${AIRTEL_TOKEN}`);
