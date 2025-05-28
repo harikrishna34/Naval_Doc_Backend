@@ -257,156 +257,161 @@ interface UserSession {
 
 
 // 🔄 Webhook to receive incoming messages from Airtel
-const sessions: Record<string, { items: string[]; confirmed: boolean }> = {};
+const sessions: Record<string, { city?: string; service?: string; specialization?: string; doctor?: string; date?: string; slot?: string }> = {};
 
-const MENU = {
-  '1': { name: 'Pizza', price: 199 },
-  '2': { name: 'Burger', price: 99 },
-  '3': { name: 'Pasta', price: 149 },
+const CITIES = ['Warangal', 'Karimnagar', 'Nizamabad'];
+const SERVICES = ['Doctor Appointments', 'Pharmacy', 'Diagnostics', 'Blood Banks'];
+const SPECIALIZATIONS = {
+  'Doctor Appointments': ['Cardiologist', 'Neurology'],
 };
+const DOCTORS = {
+  Cardiologist: ['Dr Karthik', 'Dr Spandana'],
+  Neurology: ['Dr Satya', 'Dr Srikanth'],
+};
+const SLOTS = ['10:00 AM', '11:00 AM', '12:00 PM', '1:00 PM'];
 
 app.post('/webhook', async (req: Request, res: Response) => {
   console.log('Received webhook request:', req.body);
 
-  let from: string;
-  let text: string;
-  let senderName: string;
+  if (req.body.msgStatus !== 'RECEIVED') {
+    console.log('Ignoring webhook request as msgStatus is not RECEIVED.');
+    return res.status(200).json({ message: 'Webhook ignored.' });
+  }
 
-  // Detect the payload format and extract relevant fields
-  if (req.body.from && req.body.message?.text?.body) {
-    // Format 1
-    from = req.body.from;
-    text = req.body.message.text.body.trim().toLowerCase();
-    senderName = req.body.profile?.name || 'Customer'; // Default to 'Customer' if name is not provided
-  } else if (req.body.sourceAddress && req.body.messageParameters?.text?.body) {
-    // Format 2
-    from = req.body.sourceAddress;
-    text = req.body.messageParameters.text.body.trim().toLowerCase();
-    senderName = 'Customer'; // No sender name in this format
-  } else {
+  const { sourceAddress: from, messageParameters } = req.body;
+
+  if (!from || !messageParameters?.text?.body) {
+    console.error('Invalid webhook payload:', req.body);
     return res.status(400).json({ message: 'Invalid webhook payload.' });
   }
 
+  const text = messageParameters.text.body.trim().toLowerCase();
+  console.log(`📥 Incoming message from ${from}: ${text}`);
 
-  // Initialize session if it doesn't exist
   if (!sessions[from]) {
-    sessions[from] = { items: [], confirmed: false };
+    sessions[from] = {};
   }
 
   const session = sessions[from];
   let reply = '';
 
-  // Handle different message types
-  if (text === 'hi' || text === 'hello') {
-    reply = `👋 Welcome to FoodieBot, ${senderName}! Here's our menu:\n`;
-    for (const [key, item] of Object.entries(MENU)) {
-      reply += `${key}. ${item.name} - ₹${item.price}\n`;
+  if (!session.city) {
+    if (text === 'hi') {
+      reply = `👋 Welcome to Vydhyo! Please select your city:\n${CITIES.map((city, index) => `${index + 1}) ${city}`).join('\n')}`;
+    } else if (CITIES.map(city => city.toLowerCase()).includes(text)) {
+      session.city = CITIES.find(city => city.toLowerCase() === text);
+      reply = `You selected ${session.city}. Please select a service:\n${SERVICES.map((service, index) => `${index + 1}) ${service}`).join('\n')}`;
+    } else {
+      reply = `❓ I didn't understand that. Please type 'Hi' to start.`;
     }
-    reply += '\nReply with item numbers to order (e.g., 1,2)';
-  } else if (/^\d+(,\d+)*$/.test(text)) {
-    session.items = text.split(',').map((id: string) => id.trim());
-    const itemNames = session.items.map(id => MENU[id as keyof typeof MENU]?.name || '❓').join(', ');
-    reply = `✅ You selected: ${itemNames}\nReply YES to confirm your order.`;
-  } else if (text === 'yes' && session.items.length > 0 && !session.confirmed) {
-    session.confirmed = true;
-    reply = '🎉 Order placed! Please share your delivery address.';
-  } else if (session.confirmed && session.items.length > 0) {
-    reply = `📦 Thanks! Your order will be delivered to:\n${text}\nEnjoy your meal! 🍽️`;
-    delete sessions[from];
+  } else if (!session.service) {
+    if (SERVICES.map(service => service.toLowerCase()).includes(text)) {
+      session.service = SERVICES.find(service => service.toLowerCase() === text);
+      if (session.service === 'Doctor Appointments') {
+        reply = `You selected ${session.service}. Please select a specialization:\n${SPECIALIZATIONS['Doctor Appointments'].map((spec, index) => `${index + 1}) ${spec}`).join('\n')}`;
+      } else {
+        reply = `You selected ${session.service}. This service is not yet implemented.`;
+      }
+    } else {
+      reply = `❓ I didn't understand that. Please select a service:\n${SERVICES.map((service, index) => `${index + 1}) ${service}`).join('\n')}`;
+    }
+  } else if (!session.specialization) {
+    if (SPECIALIZATIONS['Doctor Appointments'].map(spec => spec.toLowerCase()).includes(text)) {
+      session.specialization = SPECIALIZATIONS['Doctor Appointments'].find(spec => spec.toLowerCase() === text);
+      if (session.specialization && DOCTORS[session.specialization as keyof typeof DOCTORS]) {
+        reply = `You selected ${session.specialization}. Please select a doctor:\n${DOCTORS[session.specialization as keyof typeof DOCTORS].map((doc, index) => `${index + 1}) ${doc}`).join('\n')}`;
+      } else {
+        reply = `❓ I didn't understand that. Please select a valid specialization.`;
+      }
+    } else {
+      reply = `❓ I didn't understand that. Please select a specialization:\n${SPECIALIZATIONS['Doctor Appointments'].map((spec, index) => `${index + 1}) ${spec}`).join('\n')}`;
+    }
+  } else if (!session.doctor) {
+    if (DOCTORS[session.specialization as keyof typeof DOCTORS].map(doc => doc.toLowerCase()).includes(text)) {
+      session.doctor = DOCTORS[session.specialization as keyof typeof DOCTORS]?.find(doc => doc.toLowerCase() === text);
+      const today = new Date();
+      const dates = [today, new Date(today.getTime() + 86400000), new Date(today.getTime() + 2 * 86400000)];
+      reply = `You selected ${session.doctor}. Please select a date:\n${dates.map((date, index) => `${index + 1}) ${date.toISOString().split('T')[0]}`).join('\n')}`;
+    } else {
+      reply = `❓ I didn't understand that. Please select a doctor:\n${DOCTORS[session.specialization as keyof typeof DOCTORS].map((doc, index) => `${index + 1}) ${doc}`).join('\n')}`;
+    }
+  } else if (!session.date) {
+    const today = new Date();
+    const dates = [today, new Date(today.getTime() + 86400000), new Date(today.getTime() + 2 * 86400000)];
+    const selectedDate = dates.find(date => date.toISOString().split('T')[0] === text);
+    if (selectedDate) {
+      session.date = selectedDate.toISOString().split('T')[0];
+      reply = `You selected ${session.date}. Please select a time slot:\n${SLOTS.map((slot, index) => `${index + 1}) ${slot}`).join('\n')}`;
+    } else {
+      reply = `❓ I didn't understand that. Please select a date:\n${dates.map((date, index) => `${index + 1}) ${date.toISOString().split('T')[0]}`).join('\n')}`;
+    }
+  } else if (!session.slot) {
+    if (SLOTS.map(slot => slot.toLowerCase()).includes(text)) {
+      session.slot = SLOTS.find(slot => slot.toLowerCase() === text);
+      reply = `You selected ${session.slot}. Confirm your appointment by replying 'Yes'.`;
+    } else {
+      reply = `❓ I didn't understand that. Please select a time slot:\n${SLOTS.map((slot, index) => `${index + 1}) ${slot}`).join('\n')}`;
+    }
+  } else if (text === 'yes') {
+    const appointmentId = uuidv4();
+    reply = `✅ Appointment confirmed!\n\nDetails:\nCity: ${session.city}\nService: ${session.service}\nSpecialization: ${session.specialization}\nDoctor: ${session.doctor}\nDate: ${session.date}\nSlot: ${session.slot}\nAppointment ID: ${appointmentId}`;
+    delete sessions[from]; // Clear session after confirmation
   } else {
-    reply = "❓ I didn't understand that. Please type 'Hi' to see the menu.";
+    reply = `❓ I didn't understand that. Please confirm your appointment by replying 'Yes'.`;
   }
 
-  // 📨 Send reply via Airtel API
-  // console.log(`--------------------------------`);
-  // console.log(`📤 Sending reply to ${from}: ${reply}`);
-  // console.log(`Airtel API URL: ${AIRTEL_API_URL}`);
-  // console.log(`From Number: ${FROM_NUMBER}`);
+  // Send reply via Airtel API
+  try {
+    await sendWhatsAppMessage(from, reply);
+    console.log(`📤 Reply sent to ${from}: ${reply}`);
+  } catch (error: any) {
+    console.error('❌ Error sending reply:', error.message);
+  }
 
-  sendWhatsAppMessage(from, reply);
-
-  // try {
-  //   const payload = {
-  //     sessionId: req.body.sessionId || generateUuid(), // Use sessionId from the payload or generate a new one
-  //     to: from,
-  //     from: FROM_NUMBER,
-  //     message: {
-  //       text: reply,
-  //     },
-  //   };
-
-  //   console.log('Payload being sent:', JSON.stringify(payload, null, 2));
-
-  //   const username = 'world_tek';
-  //   const password = 'T7W9&w3396Y"'; // Replace with actual password
-  //   // Encode username and password in Base64
-  //   const auth = base64.encode(`${username}:${password}`);
-
-  //   const response = await axios.post(AIRTEL_API_URL, payload, {
-  //     headers: {
-  //       Authorization: `Basic ${auth}`,
-  //       'Content-Type': 'application/json',
-  //     },
-  //   });
-
-  //   // console.log(`📤 Reply sent to ${from}:`, response.data);
-  // } catch (err: any) {
-  //   console.error('❌ Error sending reply via Airtel:', err);
-  //   if (err.response) {
-  //     // console.error('Response data:', JSON.stringify(err.response.data, null, 2));
-  //     // console.error('Response status:', err.response.status);
-  //   }
-  // }
-
-  res.sendStatus(200);
+  res.status(200).json({ message: 'Webhook processed successfully.' });
 });
 
-
-const sendWhatsAppMessage = async (from:any,reply:any) => {
+/**
+ * Function to send a WhatsApp message via Airtel API
+ */
+const sendWhatsAppMessage = async (from: string, reply: string) => {
   const url = 'https://iqwhatsapp.airtel.in/gateway/airtel-xchange/basic/whatsapp-manager/v1/session/send/text';
   const username = 'world_tek';
   const password = 'T7W9&w3396Y"'; // Replace with actual password
-  
- // console.log(`📤 Sending reply to ${from}: ${reply}`);
 
-  const auth = base64.encode(`${username}:${password}`);
+  const auth = Buffer.from(`${username}:${password}`).toString('base64');
 
   const payload = {
-    sessionId: '78955',
+    sessionId: generateUuid(),
     to: from,
-    from: '917337068888',
+    from: '917337068888', // Your Airtel-registered business number
     message: {
-      text: reply
-    }
+      text: reply,
+    },
   };
 
   try {
     const response = await axios.post(url, payload, {
       headers: {
-        'Authorization': `Basic ${auth}`,
-        'Content-Type': 'application/json'
-      }
+        Authorization: `Basic ${auth}`,
+        'Content-Type': 'application/json',
+      },
     });
 
-   // console.log('Message sent successfully:', response.data);
-  } catch (error:any) {
-    //console.error('Error sending message:', error.response?.data || error.message);
+    console.log('Message sent successfully:', response.data);
+  } catch (error: any) {
+    console.error('Error sending message:', error.response?.data || error.message);
+    throw error;
   }
 };
 
-
-
-
-
-
-
-
-
+/**
+ * Generate a unique session ID
+ */
+function generateUuid(): string {
+  return uuidv4();
+}
 
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
 });
-
-function generateUuid(): string {
-  return uuidv4();
-}
