@@ -367,7 +367,7 @@ const sendWhatsAppMessage = async (from:any,reply:any) => {
   const username = 'world_tek';
   const password = 'T7W9&w3396Y"'; // Replace with actual password
   
-  console.log(`📤 Sending reply to ${from}: ${reply}`);
+ // console.log(`📤 Sending reply to ${from}: ${reply}`);
 
   const auth = base64.encode(`${username}:${password}`);
 
@@ -388,9 +388,9 @@ const sendWhatsAppMessage = async (from:any,reply:any) => {
       }
     });
 
-    console.log('Message sent successfully:', response.data);
+   // console.log('Message sent successfully:', response.data);
   } catch (error:any) {
-    console.error('Error sending message:', error.response?.data || error.message);
+    //console.error('Error sending message:', error.response?.data || error.message);
   }
 };
 
