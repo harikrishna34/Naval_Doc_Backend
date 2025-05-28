@@ -296,7 +296,7 @@ app.post('/webhook', async (req: Request, res: Response) => {
   let reply = '';
 
   if (!session.city) {
-    if (text === 'hi') {
+    if (text.toLowerCase() === 'hi') {
       reply = `👋 Welcome to Vydhyo! Please select your city:\n${CITIES.map((city, index) => `${index + 1}) ${city}`).join('\n')}`;
     } else if (Number(text) >= 1 && Number(text) <= CITIES.length) {
       session.city = CITIES[Number(text) - 1];
@@ -327,7 +327,7 @@ app.post('/webhook', async (req: Request, res: Response) => {
       session.doctor = DOCTORS[session.specialization as keyof typeof DOCTORS][Number(text) - 1];
       const today = new Date();
       const dates = [today, new Date(today.getTime() + 86400000), new Date(today.getTime() + 2 * 86400000)];
-      reply = `You selected ${session.doctor}. Please select a date:\n${dates.map((date, index) => `${index + 1}) ${date.toISOString().split('T')[0]}`).join('\n')}`;
+      reply = `You selected ${session.doctor}. Please select a date:\n${dates.map((date, index) => `${index + 1}) ${date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}`).join('\n')}`;
     } else {
       reply = `❓ I didn't understand that. Please select a valid doctor number:\n${DOCTORS[session.specialization as keyof typeof DOCTORS].map((doc, index) => `${index + 1}) ${doc}`).join('\n')}`;
     }
@@ -335,10 +335,10 @@ app.post('/webhook', async (req: Request, res: Response) => {
     const today = new Date();
     const dates = [today, new Date(today.getTime() + 86400000), new Date(today.getTime() + 2 * 86400000)];
     if (Number(text) >= 1 && Number(text) <= dates.length) {
-      session.date = dates[Number(text) - 1].toISOString().split('T')[0];
+      session.date = dates[Number(text) - 1].toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
       reply = `You selected ${session.date}. Please select a time slot:\n${SLOTS.map((slot, index) => `${index + 1}) ${slot}`).join('\n')}`;
     } else {
-      reply = `❓ I didn't understand that. Please select a valid date number:\n${dates.map((date, index) => `${index + 1}) ${date.toISOString().split('T')[0]}`).join('\n')}`;
+      reply = `❓ I didn't understand that. Please select a valid date number:\n${dates.map((date, index) => `${index + 1}) ${date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}`).join('\n')}`;
     }
   } else if (!session.slot) {
     if (Number(text) >= 1 && Number(text) <= SLOTS.length) {
