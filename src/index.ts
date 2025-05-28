@@ -285,7 +285,7 @@ app.post('/webhook', async (req: Request, res: Response) => {
     return res.status(400).json({ message: 'Invalid webhook payload.' });
   }
 
-  const text = messageParameters.text.body.trim().toLowerCase();
+  const text = messageParameters.text.body.trim();
   console.log(`📥 Incoming message from ${from}: ${text}`);
 
   if (!sessions[from]) {
@@ -298,61 +298,56 @@ app.post('/webhook', async (req: Request, res: Response) => {
   if (!session.city) {
     if (text === 'hi') {
       reply = `👋 Welcome to Vydhyo! Please select your city:\n${CITIES.map((city, index) => `${index + 1}) ${city}`).join('\n')}`;
-    } else if (CITIES.map(city => city.toLowerCase()).includes(text)) {
-      session.city = CITIES.find(city => city.toLowerCase() === text);
+    } else if (Number(text) >= 1 && Number(text) <= CITIES.length) {
+      session.city = CITIES[Number(text) - 1];
       reply = `You selected ${session.city}. Please select a service:\n${SERVICES.map((service, index) => `${index + 1}) ${service}`).join('\n')}`;
     } else {
-      reply = `❓ I didn't understand that. Please type 'Hi' to start.`;
+      reply = `❓ I didn't understand that. Please type 'Hi' to start or select a valid city number.`;
     }
   } else if (!session.service) {
-    if (SERVICES.map(service => service.toLowerCase()).includes(text)) {
-      session.service = SERVICES.find(service => service.toLowerCase() === text);
+    if (Number(text) >= 1 && Number(text) <= SERVICES.length) {
+      session.service = SERVICES[Number(text) - 1];
       if (session.service === 'Doctor Appointments') {
         reply = `You selected ${session.service}. Please select a specialization:\n${SPECIALIZATIONS['Doctor Appointments'].map((spec, index) => `${index + 1}) ${spec}`).join('\n')}`;
       } else {
         reply = `You selected ${session.service}. This service is not yet implemented.`;
       }
     } else {
-      reply = `❓ I didn't understand that. Please select a service:\n${SERVICES.map((service, index) => `${index + 1}) ${service}`).join('\n')}`;
+      reply = `❓ I didn't understand that. Please select a valid service number:\n${SERVICES.map((service, index) => `${index + 1}) ${service}`).join('\n')}`;
     }
   } else if (!session.specialization) {
-    if (SPECIALIZATIONS['Doctor Appointments'].map(spec => spec.toLowerCase()).includes(text)) {
-      session.specialization = SPECIALIZATIONS['Doctor Appointments'].find(spec => spec.toLowerCase() === text);
-      if (session.specialization && DOCTORS[session.specialization as keyof typeof DOCTORS]) {
-        reply = `You selected ${session.specialization}. Please select a doctor:\n${DOCTORS[session.specialization as keyof typeof DOCTORS].map((doc, index) => `${index + 1}) ${doc}`).join('\n')}`;
-      } else {
-        reply = `❓ I didn't understand that. Please select a valid specialization.`;
-      }
+    if (Number(text) >= 1 && Number(text) <= SPECIALIZATIONS['Doctor Appointments'].length) {
+      session.specialization = SPECIALIZATIONS['Doctor Appointments'][Number(text) - 1];
+      reply = `You selected ${session.specialization}. Please select a doctor:\n${DOCTORS[session.specialization as keyof typeof DOCTORS].map((doc, index) => `${index + 1}) ${doc}`).join('\n')}`;
     } else {
-      reply = `❓ I didn't understand that. Please select a specialization:\n${SPECIALIZATIONS['Doctor Appointments'].map((spec, index) => `${index + 1}) ${spec}`).join('\n')}`;
+      reply = `❓ I didn't understand that. Please select a valid specialization number:\n${SPECIALIZATIONS['Doctor Appointments'].map((spec, index) => `${index + 1}) ${spec}`).join('\n')}`;
     }
   } else if (!session.doctor) {
-    if (DOCTORS[session.specialization as keyof typeof DOCTORS].map(doc => doc.toLowerCase()).includes(text)) {
-      session.doctor = DOCTORS[session.specialization as keyof typeof DOCTORS]?.find(doc => doc.toLowerCase() === text);
+    if (Number(text) >= 1 && Number(text) <= DOCTORS[session.specialization as keyof typeof DOCTORS].length) {
+      session.doctor = DOCTORS[session.specialization as keyof typeof DOCTORS][Number(text) - 1];
       const today = new Date();
       const dates = [today, new Date(today.getTime() + 86400000), new Date(today.getTime() + 2 * 86400000)];
       reply = `You selected ${session.doctor}. Please select a date:\n${dates.map((date, index) => `${index + 1}) ${date.toISOString().split('T')[0]}`).join('\n')}`;
     } else {
-      reply = `❓ I didn't understand that. Please select a doctor:\n${DOCTORS[session.specialization as keyof typeof DOCTORS].map((doc, index) => `${index + 1}) ${doc}`).join('\n')}`;
+      reply = `❓ I didn't understand that. Please select a valid doctor number:\n${DOCTORS[session.specialization as keyof typeof DOCTORS].map((doc, index) => `${index + 1}) ${doc}`).join('\n')}`;
     }
   } else if (!session.date) {
     const today = new Date();
     const dates = [today, new Date(today.getTime() + 86400000), new Date(today.getTime() + 2 * 86400000)];
-    const selectedDate = dates.find(date => date.toISOString().split('T')[0] === text);
-    if (selectedDate) {
-      session.date = selectedDate.toISOString().split('T')[0];
+    if (Number(text) >= 1 && Number(text) <= dates.length) {
+      session.date = dates[Number(text) - 1].toISOString().split('T')[0];
       reply = `You selected ${session.date}. Please select a time slot:\n${SLOTS.map((slot, index) => `${index + 1}) ${slot}`).join('\n')}`;
     } else {
-      reply = `❓ I didn't understand that. Please select a date:\n${dates.map((date, index) => `${index + 1}) ${date.toISOString().split('T')[0]}`).join('\n')}`;
+      reply = `❓ I didn't understand that. Please select a valid date number:\n${dates.map((date, index) => `${index + 1}) ${date.toISOString().split('T')[0]}`).join('\n')}`;
     }
   } else if (!session.slot) {
-    if (SLOTS.map(slot => slot.toLowerCase()).includes(text)) {
-      session.slot = SLOTS.find(slot => slot.toLowerCase() === text);
+    if (Number(text) >= 1 && Number(text) <= SLOTS.length) {
+      session.slot = SLOTS[Number(text) - 1];
       reply = `You selected ${session.slot}. Confirm your appointment by replying 'Yes'.`;
     } else {
-      reply = `❓ I didn't understand that. Please select a time slot:\n${SLOTS.map((slot, index) => `${index + 1}) ${slot}`).join('\n')}`;
+      reply = `❓ I didn't understand that. Please select a valid time slot number:\n${SLOTS.map((slot, index) => `${index + 1}) ${slot}`).join('\n')}`;
     }
-  } else if (text === 'yes') {
+  } else if (text.toLowerCase() === 'yes') {
     const appointmentId = uuidv4();
     reply = `✅ Appointment confirmed!\n\nDetails:\nCity: ${session.city}\nService: ${session.service}\nSpecialization: ${session.specialization}\nDoctor: ${session.doctor}\nDate: ${session.date}\nSlot: ${session.slot}\nAppointment ID: ${appointmentId}`;
     delete sessions[from]; // Clear session after confirmation
