@@ -284,11 +284,9 @@ app.post('/webhook', async (req: Request, res: Response) => {
     text = req.body.messageParameters.text.body.trim().toLowerCase();
     senderName = 'Customer'; // No sender name in this format
   } else {
-    console.error('Invalid webhook payload:', req.body);
     return res.status(400).json({ message: 'Invalid webhook payload.' });
   }
 
-  console.log(`📥 Incoming message from ${from} (${senderName}): ${text}`);
 
   // Initialize session if it doesn't exist
   if (!sessions[from]) {
@@ -320,10 +318,10 @@ app.post('/webhook', async (req: Request, res: Response) => {
   }
 
   // 📨 Send reply via Airtel API
-  console.log(`--------------------------------`);
-  console.log(`📤 Sending reply to ${from}: ${reply}`);
-  console.log(`Airtel API URL: ${AIRTEL_API_URL}`);
-  console.log(`From Number: ${FROM_NUMBER}`);
+  // console.log(`--------------------------------`);
+  // console.log(`📤 Sending reply to ${from}: ${reply}`);
+  // console.log(`Airtel API URL: ${AIRTEL_API_URL}`);
+  // console.log(`From Number: ${FROM_NUMBER}`);
 
   sendWhatsAppMessage(from, reply);
 
